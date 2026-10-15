@@ -1,0 +1,70 @@
+// 保存まわりで使う「データの形」をまとめたファイル
+
+export interface User {
+  uid: string;
+  email: string;
+  penName: string;
+}
+
+export interface Profile {
+  penName: string;
+}
+
+/** 本棚や表紙の一覧で使う情報（本文は含まない） */
+export interface BookMeta {
+  id: string;
+  ownerId: string;
+  title: string;
+  author: string;
+  vertical: boolean;
+  /** true なら本棚から出して表紙を向けて並べている */
+  displayed: boolean;
+  /** 並べた順番（小さいほど先） */
+  displayOrder: number;
+  /** 圧縮した表紙画像（data URL）。なければ null */
+  cover: string | null;
+  updatedAt: number;
+}
+
+export interface Book extends BookMeta {
+  body: string;
+}
+
+/** 書く画面から保存するときに渡す内容 */
+export interface BookInput {
+  title: string;
+  author: string;
+  body: string;
+  vertical: boolean;
+  cover: string | null;
+}
+
+export interface Store {
+  /** true ならお試しモード（ブラウザの中だけに保存） */
+  readonly demo: boolean;
+
+  /** ログイン状態が変わるたびに呼ばれる。最初の1回はページを開いた直後に呼ばれる */
+  onUserChanged(cb: (user: User | null) => void): void;
+  currentUser(): User | null;
+
+  signUp(email: string, password: string, penName: string): Promise<void>;
+  signIn(email: string, password: string): Promise<void>;
+  signOut(): Promise<void>;
+  sendPasswordReset(email: string): Promise<void>;
+
+  getProfile(uid: string): Promise<Profile | null>;
+
+  /** 自分の本を全部（本棚の本も並べた本も） */
+  listMyBooks(): Promise<BookMeta[]>;
+  /** ある人が並べている本だけ（公開ページ用） */
+  listDisplayedBooks(uid: string): Promise<BookMeta[]>;
+  getBook(uid: string, bookId: string): Promise<Book | null>;
+
+  /** 新しい本なら id を省略。保存した本の id を返す */
+  saveBook(input: BookInput, bookId?: string): Promise<string>;
+  setDisplayed(bookId: string, displayed: boolean): Promise<void>;
+  deleteBook(bookId: string): Promise<void>;
+}
+
+/** 画面に出すためのエラー（メッセージは日本語） */
+export class StoreError extends Error {}

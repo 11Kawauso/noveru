@@ -1,0 +1,218 @@
+/* 書く画面 */
+
+.writer {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.writer-toolbar {
+  position: sticky;
+  top: 56px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -24px -20px 20px;
+  padding: 10px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.char-count {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* 縦書き／横書きの切り替えボタン */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.seg-btn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.seg-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* ---- 紙 ---- */
+
+.writer-scroll {
+  display: flex;
+  overflow-x: auto;
+  padding: 4px 4px 24px;
+}
+
+/* 縦書きは右から書くので、横スクロールの始まりを右端にする */
+.writer-scroll.is-vertical {
+  direction: rtl;
+}
+
+.paper {
+  direction: ltr;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  width: min(var(--page-w), 100%);
+  min-height: var(--page-h);
+  padding: var(--page-pad-block) var(--page-pad-inline);
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+  border-radius: 2px;
+  font-family: var(--font-body);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+}
+
+.paper.is-vertical {
+  writing-mode: vertical-rl;
+  width: auto;
+  min-width: min(var(--page-w), 100%);
+  height: var(--page-h);
+  min-height: 0;
+}
+
+.paper.is-loading {
+  opacity: 0.4;
+}
+
+.paper input,
+.paper textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--text);
+  outline: none;
+}
+
+.paper.is-vertical input,
+.paper.is-vertical textarea {
+  writing-mode: vertical-rl;
+  width: auto;
+  height: 100%;
+}
+
+.paper input::placeholder,
+.paper textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.w-title {
+  flex: none;
+  block-size: 2.4em;
+  font-size: 1.5em !important;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border-block-end: 1px dashed var(--border) !important;
+}
+
+.w-author {
+  flex: none;
+  block-size: 2.2em;
+  margin-block: 0.4em 1.6em !important;
+  text-align: end;
+  color: var(--muted) !important;
+  border-block-end: 1px dashed var(--border) !important;
+}
+
+.w-body {
+  flex: 1 0 auto;
+  min-block-size: 6em;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+/* ---- 保存の小窓 ---- */
+
+.save-body {
+  display: flex;
+  gap: 20px;
+}
+
+.save-cover {
+  flex: 0 0 150px;
+}
+
+.save-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* ---- 書き方の説明 ---- */
+
+.help-table {
+  width: 100%;
+  margin-bottom: 12px;
+  border-collapse: collapse;
+}
+
+.help-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.help-table code {
+  font-family: var(--font-body);
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .writer-toolbar {
+    margin: -16px -16px 16px;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .paper {
+    --page-pad-block: 32px;
+    --page-pad-inline: 22px;
+  }
+
+  .save-body {
+    flex-direction: column;
+  }
+
+  .save-cover {
+    flex-basis: auto;
+    width: 140px;
+  }
+}

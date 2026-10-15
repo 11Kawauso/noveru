@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// noveru のデータを守るルール
+// Firebase コンソール → Firestore Database →「ルール」タブに、このファイルの中身を全部貼り付けて「公開」を押してください。
+//
+// ・書いたり直したりできるのは、その本の持ち主だけ
+// ・並べている本（displayed が true）だけは、ログインしていない人も読める
+// ・本棚に入っている本は、持ち主しか読めない
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isDisplayed(uid, bookId) {
+      return get(/databases/$(database)/documents/users/$(uid)/books/$(bookId)).data.displayed == true;
+    }
+
+    function validBook(d) {
+      return d.title is string && d.title.size() <= 100
+        && d.author is string && d.author.size() <= 60
+        && d.vertical is bool
+        && d.displayed is bool
+        && d.displayOrder is number
+        && (d.cover == null || (d.cover is string && d.cover.size() <= 300000));
+    }
+
+    // ペンネーム
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if isOwner(uid)
+        && request.resource.data.penName is string
+        && request.resource.data.penName.size() <= 40;
+    }
+
+    // タイトル・作者・表紙など
+    match /users/{uid}/books/{bookId} {
+      allow read: if isOwner(uid) || resource.data.displayed == true;
+      allow create, update: if isOwner(uid) && validBook(request.resource.data);
+      allow delete: if isOwner(uid);
+    }
+
+    // 本文
+    match /users/{uid}/texts/{bookId} {
+      allow read: if isOwner(uid) || isDisplayed(uid, bookId);
+      allow create, update: if isOwner(uid) && request.resource.data.body is string;
+      allow delete: if isOwner(uid);
+    }
+  }
+}

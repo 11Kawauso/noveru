@@ -1,0 +1,355 @@
+/* サイト全体で共通の見た目（色・文字・ボタンなど） */
+
+:root,
+:root[data-theme="cream"] {
+  --bg: #f3ead8;
+  --paper: #fbf7ee;
+  --text: #2b2420;
+  --muted: #7d6f61;
+  --accent: #8a5a3b;
+  --accent-text: #fff8ee;
+  --border: #ddcfb6;
+  --danger: #a3392f;
+  --wood: #a7764c;
+  --wood-dark: #7b5332;
+  --wood-back: #5c3d25;
+  --shadow: 0 2px 10px rgb(60 40 20 / 0.15);
+  --page-shadow: 0 4px 24px rgb(60 40 20 / 0.18);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #1c1a18;
+  --paper: #27241f;
+  --text: #e7dfd1;
+  --muted: #a3988a;
+  --accent: #d2a676;
+  --accent-text: #1c1a18;
+  --border: #3e3831;
+  --danger: #e07a6e;
+  --wood: #5a4030;
+  --wood-dark: #3f2c20;
+  --wood-back: #2a1d15;
+  --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
+  --page-shadow: 0 4px 24px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+:root {
+  /* 文字はサイト全体でこれに統一する */
+  --font-body: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-ui: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --ui-size: 15px;
+  --body-size: 16px;
+  --body-line: 1.8;
+
+  /* 文庫本の形のページ（縦:横 = 約1.42:1） */
+  --page-w: 440px;
+  --page-h: 624px;
+  --page-pad-block: 52px;
+  --page-pad-inline: 44px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--ui-size);
+  line-height: 1.6;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+a {
+  color: var(--accent);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- ヘッダー ---- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.header-user {
+  color: var(--muted);
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12em;
+}
+
+.demo-banner {
+  padding: 8px 20px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+main {
+  padding: 24px 20px 64px;
+}
+
+/* ---- ボタン ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn-ghost:hover {
+  background: var(--paper);
+  border-color: var(--border);
+}
+
+.btn-wide {
+  width: 100%;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- 入力欄 ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.field input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.form-error {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.form-error:empty {
+  display: none;
+}
+
+.form-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ---- 小窓（ダイアログ） ---- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.dialog {
+  width: min(440px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+}
+
+.dialog h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.confirm p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* ---- お知らせ ---- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 200;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---- その他 ---- */
+
+.message-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 0;
+  color: var(--muted);
+}
+
+.loading {
+  padding: 48px 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .site-header {
+    padding: 0 12px;
+  }
+
+  main {
+    padding: 16px 16px 48px;
+  }
+
+  .header-user {
+    display: none;
+  }
+}
