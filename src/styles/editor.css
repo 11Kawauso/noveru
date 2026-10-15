@@ -7,7 +7,7 @@
 
 .writer-toolbar {
   position: sticky;
-  top: 56px;
+  top: var(--sticky-top);
   z-index: 5;
   display: flex;
   align-items: center;

@@ -88,45 +88,100 @@ textarea {
   color: inherit;
 }
 
-/* ---- ヘッダー ---- */
+/* ---- 左のメニュー ---- */
 
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 56px;
-  padding: 0 20px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+:root {
+  --rail-w: 76px;
+  /* 画面の上に貼りつくもの（書く画面の道具の列など）の位置。スマホではメニューの下になる */
+  --sticky-top: 0px;
 }
 
-.logo {
+.side-rail {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: var(--rail-w);
+  padding: 20px 0 16px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.rail-logo {
+  writing-mode: vertical-rl;
+  margin-bottom: 20px;
   font-family: var(--font-body);
   font-size: 22px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   color: var(--text);
   text-decoration: none;
 }
 
-.header-right {
+.rail-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
+  gap: 2px;
+  width: 60px;
+  padding: 8px 0 6px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
-.header-user {
-  color: var(--muted);
-  padding: 0 8px;
+.rail-item:hover {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.rail-item.active {
+  background: var(--paper);
+  color: var(--accent);
+}
+
+.rail-icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.rail-label {
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+.rail-user {
+  writing-mode: vertical-rl;
+  max-height: 8em;
+  margin: 8px 0 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 12em;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.page-area {
+  margin-left: var(--rail-w);
+  min-width: 0;
 }
 
 .demo-banner {
@@ -340,16 +395,55 @@ main {
   text-align: center;
 }
 
-@media (max-width: 600px) {
-  .site-header {
-    padding: 0 12px;
+/* スマホでは左のメニューを上の細い帯にする（横幅のほうが足りないため） */
+@media (max-width: 700px) {
+  :root {
+    --sticky-top: 52px;
   }
 
+  .side-rail {
+    position: sticky;
+    bottom: auto;
+    flex-direction: row;
+    width: auto;
+    height: 52px;
+    padding: 0 8px 0 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .rail-logo {
+    writing-mode: horizontal-tb;
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .rail-item {
+    width: 52px;
+    padding: 4px 0 2px;
+  }
+
+  .rail-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .rail-label {
+    font-size: 10px;
+  }
+
+  .rail-user {
+    display: none;
+  }
+
+  .page-area {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 600px) {
   main {
     padding: 16px 16px 48px;
-  }
-
-  .header-user {
-    display: none;
   }
 }

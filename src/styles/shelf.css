@@ -55,7 +55,9 @@
 .shelf-books {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  /* 段の高さを本の高さ＋棚板にそろえる（本が棚板に沈まないように） */
+  align-content: flex-start;
+  align-items: flex-start;
   gap: 0 3px;
   min-height: var(--row-h);
   /* 各段の下に棚板を描く */
@@ -70,9 +72,13 @@
 }
 
 .shelf-empty {
-  align-self: center;
-  margin: 0 auto;
-  padding: 0 16px calc(var(--board) + 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--row-h);
+  margin: 0;
+  padding: 0 16px var(--board);
   color: #e9dcc8;
   text-align: center;
 }
@@ -81,7 +87,7 @@
   display: flex;
   align-items: flex-end;
   height: calc(var(--row-h) - var(--board));
-  margin: 0;
+  margin: 0 0 var(--board);
   padding: 0;
   border: none;
   background: none;

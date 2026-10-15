@@ -21,14 +21,13 @@
     </script>
   </head>
   <body>
-    <header class="site-header">
-      <a class="logo" href="#/">noveru</a>
-      <div class="header-right" id="header-right"></div>
-    </header>
-    <div id="demo-banner" class="demo-banner" hidden>
-      お試しモード：Firebase がまだ設定されていないため、データはこのブラウザの中だけに保存されます。
+    <nav class="side-rail" id="side-rail" aria-label="メニュー"></nav>
+    <div class="page-area">
+      <div id="demo-banner" class="demo-banner" hidden>
+        お試しモード：Firebase がまだ設定されていないため、データはこのブラウザの中だけに保存されます。
+      </div>
+      <main id="app"></main>
     </div>
-    <main id="app"></main>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
