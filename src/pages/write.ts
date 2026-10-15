@@ -23,6 +23,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   let titleReading = "";
   let saved = ""; // 最後に保存した内容（変更があるか調べるため）
   let saving = false;
+  let started = false; // 紙を出して書き始めたか（新しい本は向きを選んでから）
 
   const title = h("input", { class: "w-title", type: "text", placeholder: "タイトル", maxlength: 100 });
   const author = h("input", { class: "w-author", type: "text", placeholder: "作者", maxlength: 60 });
@@ -31,14 +32,14 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   const scroller = h("div", { class: "writer-scroll" }, paper);
   const count = h("span", { class: "char-count" });
 
-  const verticalBtn = h("button", { class: "seg-btn", onclick: () => setDirection(true) }, "縦書き");
-  const horizontalBtn = h("button", { class: "seg-btn", onclick: () => setDirection(false) }, "横書き");
+  // 書く向きは新しく書くときに決めて、あとからは変えられない（表示だけ）
+  const dirBadge = h("span", { class: "dir-badge", title: "書く向きは、新しく書くときに決めます" });
 
   const toolbar = h(
     "div",
     { class: "writer-toolbar" },
     h("a", { class: "btn btn-ghost", href: "#/" }, "← 本棚へ"),
-    h("div", { class: "seg", role: "group", "aria-label": "書く向き" }, verticalBtn, horizontalBtn),
+    dirBadge,
     count,
     h("div", { class: "toolbar-spacer" }),
     h("button", { class: "btn btn-ghost", onclick: () => showHelp() }, "書き方"),
@@ -46,10 +47,11 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     h("button", { class: "btn btn-primary", onclick: () => openSaveDialog() }, "保存"),
   );
 
-  app.append(h("div", { class: "writer" }, toolbar, scroller));
+  const writer = h("div", { class: "writer", hidden: !bookId }, toolbar, scroller);
+  app.append(writer);
 
   const snapshot = () => JSON.stringify([title.value, titleReading, author.value, body.value, vertical, cover]);
-  const isClean = () => snapshot() === saved;
+  const isClean = () => !started || snapshot() === saved;
   const input = (): BookInput => ({
     title: title.value.trim(),
     titleReading: titleReading.trim(),
@@ -79,10 +81,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     vertical = v;
     paper.classList.toggle("is-vertical", v);
     scroller.classList.toggle("is-vertical", v);
-    verticalBtn.classList.toggle("active", v);
-    horizontalBtn.classList.toggle("active", !v);
-    verticalBtn.setAttribute("aria-pressed", String(v));
-    horizontalBtn.setAttribute("aria-pressed", String(!v));
+    dirBadge.textContent = v ? "縦書き" : "横書き";
     grow();
     // 縦書きは右端（書き始め）が見えるようにする
     scroller.scrollLeft = v ? scroller.scrollWidth : 0;
@@ -255,6 +254,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   const onKey = (e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
+      if (!started) return;
       if (document.querySelector(".dialog-backdrop, .preview-overlay")) return;
       if (bookId) save();
       else openSaveDialog();
@@ -276,7 +276,9 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     author.value = data.author;
     body.value = data.body;
     cover = data.cover;
+    writer.hidden = false;
     setDirection(data.vertical);
+    started = true;
     saved = snapshot();
     (data.title ? body : title).focus({ preventScroll: true });
   };
@@ -299,7 +301,30 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         navigate("/");
       });
   } else {
-    start({ title: "", titleReading: "", author: user.penName, body: "", vertical: true, cover: null });
+    // 新しい本：はじめに縦書きか横書きかを選ぶ
+    const choice = (v: boolean) =>
+      h(
+        "button",
+        {
+          class: "dir-choice",
+          onclick: () => {
+            chooser.remove();
+            start({ title: "", titleReading: "", author: user.penName, body: "", vertical: v, cover: null });
+          },
+        },
+        h("div", { class: `dir-sample ${v ? "is-vertical" : "is-horizontal"}`, "aria-hidden": "true" }),
+        h("strong", {}, v ? "縦書き" : "横書き"),
+        h("span", {}, v ? "右から左へ書きます。紙は横に伸びます。" : "上から下へ書きます。紙は下に伸びます。"),
+      );
+    const chooser = h(
+      "div",
+      { class: "dir-chooser" },
+      h("h1", { class: "page-title" }, "どちらで書きますか？"),
+      h("p", { class: "form-note" }, "書く向きは、あとから変えられません。"),
+      h("div", { class: "dir-choices" }, choice(true), choice(false)),
+      h("a", { class: "btn btn-ghost", href: "#/" }, "やめる"),
+    );
+    app.append(chooser);
   }
 
   return () => {

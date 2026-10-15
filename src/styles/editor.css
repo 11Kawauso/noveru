@@ -35,30 +35,6 @@
   font-weight: 600;
 }
 
-/* 縦書き／横書きの切り替えボタン */
-.seg {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--paper);
-}
-
-.seg-btn {
-  min-height: 30px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.seg-btn.active {
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
 /* ---- 紙 ---- */
 
 .writer-scroll {
@@ -223,4 +199,84 @@
 
 .save-reading small {
   font-size: 12px;
+}
+
+
+/* ---- 書く向き ---- */
+
+.dir-badge {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dir-chooser {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 32px;
+  text-align: center;
+}
+
+.dir-choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  margin: 16px 0 8px;
+}
+
+.dir-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  padding: 24px 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--paper);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.dir-choice:hover,
+.dir-choice:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+
+.dir-choice strong {
+  font-family: var(--font-body);
+  font-size: 18px;
+}
+
+.dir-choice span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* 小さな紙の見本（線で文字の並びを表す） */
+.dir-sample {
+  width: 84px;
+  height: 118px;
+  margin-bottom: 6px;
+  border-radius: 2px;
+  background-color: var(--bg);
+  box-shadow: var(--shadow);
+  background-clip: content-box;
+  padding: 14px 12px;
+}
+
+.dir-sample.is-vertical {
+  background-image: repeating-linear-gradient(to left, var(--muted) 0 2px, transparent 2px 9px);
+}
+
+.dir-sample.is-horizontal {
+  background-image: repeating-linear-gradient(to bottom, var(--muted) 0 2px, transparent 2px 9px);
 }
