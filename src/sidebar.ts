@@ -12,6 +12,8 @@ const ICONS = {
   pen: '<path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M14 7l3.5 3.5"/>',
   moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   logout: '<path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>',
   login: '<path d="M14 4h5v16h-5M9 8l4 4-4 4M3 12h10"/>',
 };
@@ -29,7 +31,16 @@ function railLink(href: string, iconName: keyof typeof ICONS, label: string, key
 /** いま開いている画面のメニューを目立たせる */
 function markActive() {
   const path = location.hash.replace(/^#/, "") || "/";
-  const key = path === "/" ? "shelf" : path.startsWith("/write") ? "write" : "";
+  const key =
+    path === "/"
+      ? "shelf"
+      : path.startsWith("/write")
+        ? "write"
+        : path === "/likes"
+          ? "likes"
+          : path === "/history"
+            ? "history"
+            : "";
   document.querySelectorAll<HTMLElement>(".rail-item[data-key]").forEach((el) => {
     el.classList.toggle("active", el.dataset.key === key);
   });
@@ -55,6 +66,8 @@ export function renderSidebar(user: User | null) {
     h("a", { class: "rail-logo", href: "#/", title: "noveru" }, "noveru"),
     user ? railLink("#/", "shelf", "本棚", "shelf") : null,
     user ? railLink("#/write/new", "pen", "書く", "write") : null,
+    user ? railLink("#/likes", "heart", "いいね", "likes") : null,
+    user ? railLink("#/history", "clock", "履歴", "history") : null,
     h("div", { class: "rail-spacer" }),
     themeBtn,
     user ? h("span", { class: "rail-user", title: user.email }, user.penName || user.email) : null,

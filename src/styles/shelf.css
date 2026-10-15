@@ -521,3 +521,65 @@ body.dragging-book * {
   background: var(--bg);
   outline: none;
 }
+
+
+/* ---- いいね ---- */
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.like-btn:hover {
+  border-color: var(--like);
+  color: var(--like);
+}
+
+.like-btn.liked {
+  border-color: var(--like);
+  color: var(--like);
+}
+
+.like-heart {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.like-btn.liked .like-heart {
+  animation: like-pop 0.3s ease-out;
+}
+
+@keyframes like-pop {
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+.book-menu-like {
+  margin-top: 10px;
+}
+
+.read-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* いいね・履歴の画面で、表紙の下に出す小さな文字 */
+.cover-sub {
+  margin-top: -6px;
+  color: var(--muted);
+  font-size: 12px;
+}

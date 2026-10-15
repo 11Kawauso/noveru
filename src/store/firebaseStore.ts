@@ -4,6 +4,9 @@
 //   users/{uid}                  … ペンネーム（誰でも読める）
 //   users/{uid}/books/{bookId}   … タイトル・作者・表紙など（並べた本は誰でも読める）
 //   users/{uid}/texts/{bookId}   … 本文（並べた本は誰でも読める）
+//   users/{uid}/books/{bookId}/likes/{likerUid} … その本へのいいね（数は誰でも見られる）
+//   users/{uid}/liked/{ownerId_bookId}          … 自分がいいねした本（本人だけ）
+//   users/{uid}/history/{ownerId_bookId}        … 閲覧履歴（本人だけ）
 // 本文を分けているのは、本棚を表示するときに全部の本文を読み込まないため。
 
 import { initializeApp } from "firebase/app";
@@ -21,8 +24,11 @@ import {
   collection,
   doc,
   getDoc,
+  getCountFromServer,
   getDocs,
   getFirestore,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -33,7 +39,17 @@ import {
   type Firestore,
   type Timestamp,
 } from "firebase/firestore";
-import type { Book, BookInput, BookMeta, BookPlacement, Profile, Store, User } from "./types";
+import type {
+  Book,
+  BookInput,
+  BookMeta,
+  BookPlacement,
+  HistoryEntry,
+  LikeInfo,
+  Profile,
+  Store,
+  User,
+} from "./types";
 import { StoreError } from "./types";
 
 type FirebaseConfig = Record<string, string>;
@@ -278,10 +294,104 @@ export class FirebaseStore implements Store {
   deleteBook(bookId: string) {
     return wrap(async () => {
       const u = this.requireUser();
+      const likes = await getDocs(collection(this.db, "users", u.uid, "books", bookId, "likes")).catch(() => null);
       const batch = writeBatch(this.db);
+      likes?.docs.slice(0, 400).forEach((d) => batch.delete(d.ref));
       batch.delete(doc(this.db, "users", u.uid, "texts", bookId));
       batch.delete(doc(this.db, "users", u.uid, "books", bookId));
       await batch.commit();
     });
+  }
+
+  // ---- いいね ----
+
+  getLikeInfo(ownerId: string, bookId: string) {
+    return wrap(async (): Promise<LikeInfo> => {
+      const likes = collection(this.db, "users", ownerId, "books", bookId, "likes");
+      const [count, mine] = await Promise.all([
+        getCountFromServer(likes),
+        this.user ? getDoc(doc(likes, this.user.uid)) : Promise.resolve(null),
+      ]);
+      return { count: count.data().count, liked: !!mine?.exists() };
+    });
+  }
+
+  setLiked(ownerId: string, bookId: string, liked: boolean) {
+    return wrap(async () => {
+      const u = this.requireUser();
+      const likeRef = doc(this.db, "users", ownerId, "books", bookId, "likes", u.uid);
+      const myRef = doc(this.db, "users", u.uid, "liked", `${ownerId}_${bookId}`);
+      const batch = writeBatch(this.db);
+      if (liked) {
+        batch.set(likeRef, { likedAt: serverTimestamp() });
+        batch.set(myRef, { ownerId, bookId, likedAt: serverTimestamp() });
+      } else {
+        batch.delete(likeRef);
+        batch.delete(myRef);
+      }
+      await batch.commit();
+    });
+  }
+
+  listLikedBooks() {
+    return wrap(async () => {
+      const u = this.requireUser();
+      const snap = await getDocs(
+        query(collection(this.db, "users", u.uid, "liked"), orderBy("likedAt", "desc"), limit(200)),
+      );
+      const books = await Promise.all(snap.docs.map((d) => this.getMeta(d.data().ownerId, d.data().bookId)));
+      return books.filter((b): b is BookMeta => b !== null);
+    });
+  }
+
+  // ---- 閲覧履歴 ----
+
+  recordView(ownerId: string, bookId: string) {
+    return wrap(async () => {
+      if (!this.user) return;
+      await setDoc(doc(this.db, "users", this.user.uid, "history", `${ownerId}_${bookId}`), {
+        ownerId,
+        bookId,
+        viewedAt: serverTimestamp(),
+      });
+    });
+  }
+
+  listHistory() {
+    return wrap(async () => {
+      const u = this.requireUser();
+      const snap = await getDocs(
+        query(collection(this.db, "users", u.uid, "history"), orderBy("viewedAt", "desc"), limit(100)),
+      );
+      const entries = await Promise.all(
+        snap.docs.map(async (d): Promise<HistoryEntry | null> => {
+          const book = await this.getMeta(d.data().ownerId, d.data().bookId);
+          return book ? { book, viewedAt: toMillis(d.data().viewedAt) } : null;
+        }),
+      );
+      return entries.filter((e): e is HistoryEntry => e !== null);
+    });
+  }
+
+  clearHistory() {
+    return wrap(async () => {
+      const u = this.requireUser();
+      const snap = await getDocs(collection(this.db, "users", u.uid, "history"));
+      for (let i = 0; i < snap.docs.length; i += 450) {
+        const batch = writeBatch(this.db);
+        snap.docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    });
+  }
+
+  /** 本の情報だけ読む。消えた本・非公開になった他人の本は null */
+  private async getMeta(ownerId: string, bookId: string): Promise<BookMeta | null> {
+    try {
+      const snap = await getDoc(doc(this.db, "users", ownerId, "books", bookId));
+      return snap.exists() ? toMeta(bookId, ownerId, snap.data()) : null;
+    } catch {
+      return null;
+    }
   }
 }

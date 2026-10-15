@@ -73,6 +73,32 @@ export interface Store {
   /** 本の置き場所（本棚／公開中）と順番をまとめて変える */
   arrangeBooks(changes: BookPlacement[]): Promise<void>;
   deleteBook(bookId: string): Promise<void>;
+
+  /** いいねの数と、自分がいいねしているか */
+  getLikeInfo(ownerId: string, bookId: string): Promise<LikeInfo>;
+  /** いいねする／やめる（ログインが必要） */
+  setLiked(ownerId: string, bookId: string, liked: boolean): Promise<void>;
+  /** 自分がいいねした本（新しい順）。非公開になった本は入らない */
+  listLikedBooks(): Promise<BookMeta[]>;
+
+  /** 本を読んだことを閲覧履歴に残す（ログインしているときだけ） */
+  recordView(ownerId: string, bookId: string): Promise<void>;
+  /** 閲覧履歴（新しい順）。非公開になった本は入らない */
+  listHistory(): Promise<HistoryEntry[]>;
+  clearHistory(): Promise<void>;
+}
+
+export interface LikeInfo {
+  /** いいねの数（全員分） */
+  count: number;
+  /** 自分がいいねしているか */
+  liked: boolean;
+}
+
+/** 閲覧履歴の1件 */
+export interface HistoryEntry {
+  book: BookMeta;
+  viewedAt: number;
 }
 
 /** 本の置き場所と順番の変更（ドラッグで並べ替えたとき） */

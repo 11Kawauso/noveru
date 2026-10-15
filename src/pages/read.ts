@@ -2,6 +2,7 @@
 
 import { displayTitle } from "../lib/cover";
 import { h } from "../lib/dom";
+import { createLikeButton } from "../lib/likeButton";
 import { createReader, type Reader } from "../lib/reader";
 import { store } from "../store";
 
@@ -26,21 +27,27 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
             "div",
             { class: "message-page" },
             h("p", {}, "この本は見つかりませんでした。本棚に戻されたか、削除された可能性があります。"),
-            h("a", { class: "btn", href: `#/u/${encodeURIComponent(uid)}` }, "並べている本を見る"),
+            h("a", { class: "btn", href: `#/u/${encodeURIComponent(uid)}` }, "公開中の本を見る"),
           ),
         );
         return;
       }
       document.title = `${displayTitle(book)} - noveru`;
       reader = createReader(book);
+      store.recordView(uid, id).catch(() => {});
       status.replaceWith(
         h(
           "div",
           { class: "read-page-head" },
           isMine
             ? h("a", { href: "#/" }, "← 本棚へ")
-            : h("a", { href: `#/u/${encodeURIComponent(uid)}` }, "← 並べている本へ"),
-          isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "書き直す") : null,
+            : h("a", { href: `#/u/${encodeURIComponent(uid)}` }, "← 公開中の本へ"),
+          h(
+            "div",
+            { class: "read-page-actions" },
+            createLikeButton(uid, id),
+            isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "書き直す") : null,
+          ),
         ),
         reader.el,
       );

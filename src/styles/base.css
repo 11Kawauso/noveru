@@ -10,6 +10,7 @@
   --accent-text: #fff8ee;
   --border: #ddcfb6;
   --danger: #a3392f;
+  --like: #c4485a;
   --wood: #a7764c;
   --wood-dark: #7b5332;
   --wood-back: #5c3d25;
@@ -27,6 +28,7 @@
   --accent-text: #1c1a18;
   --border: #3e3831;
   --danger: #e07a6e;
+  --like: #f08a98;
   --wood: #5a4030;
   --wood-dark: #3f2c20;
   --wood-back: #2a1d15;
@@ -425,23 +427,29 @@ main {
     flex-direction: row;
     align-items: center;
     width: auto;
+    gap: 0;
     height: 52px;
-    padding: 0 8px 0 14px;
+    padding: 0 6px 0 12px;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    overflow: visible;
+    /* 画面がとても狭いときは横にスクロールできるようにする */
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .rail-logo {
-    margin: 0 8px 0 0;
-    font-size: 20px;
+    flex: none;
+    margin: 0 6px 0 0;
+    font-size: 18px;
   }
 
   .rail-item {
+    flex: none;
     flex-direction: column;
     gap: 2px;
-    width: 52px;
-    padding: 4px 0 2px;
+    width: auto;
+    min-width: 40px;
+    padding: 4px 3px 2px;
   }
 
   .rail-icon svg {
@@ -456,7 +464,7 @@ main {
   .rail-label {
     flex: none;
     padding: 0;
-    font-size: 10px;
+    font-size: 9.5px;
   }
 
   .rail-user {

@@ -4,6 +4,7 @@ import { enableBookDrag, type DropResult } from "../lib/bookDrag";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
+import { createLikeButton } from "../lib/likeButton";
 import { openPopupMenu } from "../lib/popupMenu";
 import { navigate } from "../router";
 import { store, StoreError, type BookMeta, type BookPlacement } from "../store";
@@ -242,6 +243,7 @@ export function myPage(app: HTMLElement) {
           { class: "book-menu-body" },
           h("h2", {}, displayTitle(b)),
           b.author ? h("p", { class: "book-menu-author" }, b.author) : null,
+          h("div", { class: "book-menu-like" }, createLikeButton(user.uid, b.id)),
           h(
             "div",
             { class: "book-menu-actions" },

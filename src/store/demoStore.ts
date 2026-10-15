@@ -1,7 +1,7 @@
 // お試しモード：Firebase の代わりにブラウザの中（localStorage）に保存する仕組み
 // Firebase を設定する前に画面を試すためのもの。
 
-import type { Book, BookInput, BookMeta, BookPlacement, Profile, Store, User } from "./types";
+import type { Book, BookInput, BookMeta, BookPlacement, HistoryEntry, LikeInfo, Profile, Store, User } from "./types";
 import { StoreError } from "./types";
 
 const KEY = "noveru-demo";
@@ -13,10 +13,19 @@ interface DemoAccount {
   penName: string;
 }
 
+interface DemoMark {
+  uid: string;
+  ownerId: string;
+  bookId: string;
+  at: number;
+}
+
 interface DemoData {
   accounts: DemoAccount[];
   books: Book[];
   currentUid: string | null;
+  likes?: DemoMark[];
+  history?: DemoMark[];
 }
 
 function load(): DemoData {
@@ -177,6 +186,66 @@ export class DemoStore implements Store {
   async deleteBook(bookId: string) {
     const u = this.requireUser();
     this.data.books = this.data.books.filter((x) => !(x.ownerId === u.uid && x.id === bookId));
+    this.data.likes = (this.data.likes ?? []).filter((x) => !(x.ownerId === u.uid && x.bookId === bookId));
+    this.save();
+  }
+
+  /** 自分が読める本（自分の本か、公開中の本） */
+  private visibleMeta(ownerId: string, bookId: string): BookMeta | null {
+    const b = this.data.books.find((x) => x.ownerId === ownerId && x.id === bookId);
+    if (!b || (!b.displayed && b.ownerId !== this.currentUser()?.uid)) return null;
+    return meta(b);
+  }
+
+  async getLikeInfo(ownerId: string, bookId: string): Promise<LikeInfo> {
+    const likes = (this.data.likes ?? []).filter((x) => x.ownerId === ownerId && x.bookId === bookId);
+    const me = this.currentUser()?.uid;
+    return { count: likes.length, liked: likes.some((x) => x.uid === me) };
+  }
+
+  async setLiked(ownerId: string, bookId: string, liked: boolean) {
+    const u = this.requireUser();
+    const rest = (this.data.likes ?? []).filter(
+      (x) => !(x.uid === u.uid && x.ownerId === ownerId && x.bookId === bookId),
+    );
+    this.data.likes = liked ? [...rest, { uid: u.uid, ownerId, bookId, at: Date.now() }] : rest;
+    this.save();
+  }
+
+  async listLikedBooks() {
+    const u = this.requireUser();
+    return (this.data.likes ?? [])
+      .filter((x) => x.uid === u.uid)
+      .sort((a, b) => b.at - a.at)
+      .map((x) => this.visibleMeta(x.ownerId, x.bookId))
+      .filter((b): b is BookMeta => b !== null);
+  }
+
+  async recordView(ownerId: string, bookId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    const rest = (this.data.history ?? []).filter(
+      (x) => !(x.uid === u.uid && x.ownerId === ownerId && x.bookId === bookId),
+    );
+    this.data.history = [...rest, { uid: u.uid, ownerId, bookId, at: Date.now() }];
+    this.save();
+  }
+
+  async listHistory() {
+    const u = this.requireUser();
+    return (this.data.history ?? [])
+      .filter((x) => x.uid === u.uid)
+      .sort((a, b) => b.at - a.at)
+      .map((x): HistoryEntry | null => {
+        const book = this.visibleMeta(x.ownerId, x.bookId);
+        return book ? { book, viewedAt: x.at } : null;
+      })
+      .filter((e): e is HistoryEntry => e !== null);
+  }
+
+  async clearHistory() {
+    const u = this.requireUser();
+    this.data.history = (this.data.history ?? []).filter((x) => x.uid !== u.uid);
     this.save();
   }
 }

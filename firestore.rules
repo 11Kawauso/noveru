@@ -48,5 +48,22 @@ service cloud.firestore {
       allow create, update: if isOwner(uid) && request.resource.data.body is string;
       allow delete: if isOwner(uid);
     }
+
+    // その本へのいいね（1人1件。数は誰でも見られる）
+    // いいねできるのはログインした人だけで、公開中の本（または自分の本）に限る
+    match /users/{uid}/books/{bookId}/likes/{likerId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == likerId
+        && (isOwner(uid) || isDisplayed(uid, bookId));
+      allow delete: if request.auth != null && (request.auth.uid == likerId || isOwner(uid));
+    }
+
+    // 自分がいいねした本・閲覧履歴（本人だけ）
+    match /users/{uid}/liked/{key} {
+      allow read, write: if isOwner(uid);
+    }
+    match /users/{uid}/history/{key} {
+      allow read, write: if isOwner(uid);
+    }
   }
 }
