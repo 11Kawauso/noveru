@@ -267,7 +267,7 @@ export function myPage(app: HTMLElement) {
                   "btn btn-primary",
                 ),
             act("読む", () => navigate(`/read/${encodeURIComponent(user.uid)}/${encodeURIComponent(b.id)}`)),
-            act("書き直す", () => navigate(`/write/${encodeURIComponent(b.id)}`)),
+            act("編集", () => navigate(`/write/${encodeURIComponent(b.id)}`)),
             act(
               "削除",
               async () => {
