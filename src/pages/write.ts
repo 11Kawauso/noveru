@@ -20,6 +20,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   let bookId: string | undefined = params.id;
   let vertical = true;
   let cover: string | null = null;
+  let titleReading = "";
   let saved = ""; // 最後に保存した内容（変更があるか調べるため）
   let saving = false;
 
@@ -47,10 +48,11 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   app.append(h("div", { class: "writer" }, toolbar, scroller));
 
-  const snapshot = () => JSON.stringify([title.value, author.value, body.value, vertical, cover]);
+  const snapshot = () => JSON.stringify([title.value, titleReading, author.value, body.value, vertical, cover]);
   const isClean = () => snapshot() === saved;
   const input = (): BookInput => ({
     title: title.value.trim(),
+    titleReading: titleReading.trim(),
     author: author.value.trim(),
     body: body.value,
     vertical,
@@ -112,9 +114,16 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     }
   };
 
-  /** 保存の小窓：表紙の画像を選んで保存する */
+  /** 保存の小窓：タイトルの読みと表紙の画像を決めて保存する */
   const openSaveDialog = () => {
     let draftCover = cover;
+    const readingInput = h("input", {
+      type: "text",
+      value: titleReading,
+      maxlength: 200,
+      placeholder: "例：なつのおわりに",
+      autocomplete: "off",
+    });
     const previewBox = h("div", { class: "save-cover" });
     const removeBtn = h("button", { class: "btn btn-ghost", type: "button" }, "画像を外す");
     const fileInput = h("input", { type: "file", accept: "image/*", hidden: true });
@@ -125,6 +134,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         id: bookId ?? "new",
         ownerId: user.uid,
         title: title.value,
+        titleReading: readingInput.value,
         author: author.value,
         vertical,
         displayed: false,
@@ -161,12 +171,17 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         class: "btn btn-primary",
         onclick: async () => {
           const prevCover = cover;
+          const prevReading = titleReading;
           cover = draftCover;
+          titleReading = readingInput.value;
           saveBtn.disabled = true;
           const ok = await save();
           saveBtn.disabled = false;
           if (ok) close();
-          else cover = prevCover;
+          else {
+            cover = prevCover;
+            titleReading = prevReading;
+          }
         },
       },
       bookId ? "保存する" : "保存して本棚に入れる",
@@ -177,6 +192,13 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         "div",
         { class: "save-dialog" },
         h("h2", {}, "保存"),
+        h(
+          "label",
+          { class: "field save-reading" },
+          h("span", {}, "タイトルの読み（ひらがな）"),
+          readingInput,
+          h("small", { class: "form-note" }, "あいうえお順に並べるときに使います。空欄ならタイトルのまま並びます。"),
+        ),
         h(
           "div",
           { class: "save-body" },
@@ -241,8 +263,16 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   document.addEventListener("keydown", onKey);
   setLeaveGuard(isClean);
 
-  const start = (data: { title: string; author: string; body: string; vertical: boolean; cover: string | null }) => {
+  const start = (data: {
+    title: string;
+    titleReading: string;
+    author: string;
+    body: string;
+    vertical: boolean;
+    cover: string | null;
+  }) => {
     title.value = data.title;
+    titleReading = data.titleReading;
     author.value = data.author;
     body.value = data.body;
     cover = data.cover;
@@ -269,7 +299,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         navigate("/");
       });
   } else {
-    start({ title: "", author: user.penName, body: "", vertical: true, cover: null });
+    start({ title: "", titleReading: "", author: user.penName, body: "", vertical: true, cover: null });
   }
 
   return () => {

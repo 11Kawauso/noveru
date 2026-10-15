@@ -216,3 +216,11 @@
     width: 140px;
   }
 }
+
+.save-reading {
+  margin-bottom: 20px;
+}
+
+.save-reading small {
+  font-size: 12px;
+}

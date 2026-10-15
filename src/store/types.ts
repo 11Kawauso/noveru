@@ -15,6 +15,8 @@ export interface BookMeta {
   id: string;
   ownerId: string;
   title: string;
+  /** タイトルの読み（ひらがな）。あいうえお順に並べるときに使う。空ならタイトルのまま */
+  titleReading: string;
   author: string;
   vertical: boolean;
   /** true なら本棚から出して表紙を向けて並べている */
@@ -37,6 +39,7 @@ export interface Book extends BookMeta {
 /** 書く画面から保存するときに渡す内容 */
 export interface BookInput {
   title: string;
+  titleReading: string;
   author: string;
   body: string;
   vertical: boolean;

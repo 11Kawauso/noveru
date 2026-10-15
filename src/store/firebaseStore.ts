@@ -79,6 +79,7 @@ function toMeta(id: string, ownerId: string, d: DocumentData): BookMeta {
     id,
     ownerId,
     title: d.title ?? "",
+    titleReading: d.titleReading ?? "",
     author: d.author ?? "",
     vertical: d.vertical ?? true,
     displayed: d.displayed ?? false,
@@ -224,6 +225,7 @@ export class FirebaseStore implements Store {
       const batch = writeBatch(this.db);
       const meta = {
         title: input.title,
+        titleReading: input.titleReading,
         author: input.author,
         vertical: input.vertical,
         cover: input.cover,

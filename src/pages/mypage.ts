@@ -12,13 +12,16 @@ export function publicUrl(uid: string): string {
   return `${location.origin}${location.pathname}#/u/${encodeURIComponent(uid)}`;
 }
 
+/** あいうえお順に使う文字（読みが入っていれば読み、なければタイトル） */
+const readingOf = (b: BookMeta) => b.titleReading.trim() || displayTitle(b);
+
 // 「本棚」「公開中」を押したときの並べ方
 const collator = new Intl.Collator("ja", { numeric: true, sensitivity: "base" });
 const SORTS: { label: string; compare: (a: BookMeta, b: BookMeta) => number }[] = [
   { label: "作成が新しい順", compare: (a, b) => b.createdAt - a.createdAt },
   { label: "作成が古い順", compare: (a, b) => a.createdAt - b.createdAt },
   { label: "更新が新しい順", compare: (a, b) => b.updatedAt - a.updatedAt },
-  { label: "タイトル順（あいうえお）", compare: (a, b) => collator.compare(displayTitle(a), displayTitle(b)) },
+  { label: "タイトル順（あいうえお）", compare: (a, b) => collator.compare(readingOf(a), readingOf(b)) },
 ];
 
 export function myPage(app: HTMLElement) {
