@@ -1,13 +1,16 @@
 // 公開ページ：その人が並べている本だけを表紙で見せる（本棚は見せない）
 
 import { displayTitle, renderCover } from "../lib/cover";
+import { enableBookTips } from "../lib/bookTip";
 import { h } from "../lib/dom";
+import type { BookMeta } from "../store";
 import { store } from "../store";
 
 export function publicPage(app: HTMLElement, params: Record<string, string>) {
   const { uid } = params;
   const isMine = store.currentUser()?.uid === uid;
   let left = false;
+  let shown: BookMeta[] = [];
 
   const name = h("h1", {}, "");
   const grid = h("div", { class: "cover-grid" });
@@ -47,11 +50,12 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
         return;
       }
       note.remove();
+      shown = books;
       grid.replaceChildren(
         ...books.map((b) =>
           h(
             "a",
-            { class: "cover-item", href: `#/read/${encodeURIComponent(uid)}/${encodeURIComponent(b.id)}` },
+            { class: "cover-item", "data-book-id": b.id, href: `#/read/${encodeURIComponent(uid)}/${encodeURIComponent(b.id)}` },
             renderCover(b),
             h("span", { class: "cover-caption" }, displayTitle(b)),
           ),
@@ -60,8 +64,11 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
     },
   );
 
+  const stopTips = enableBookTips(grid, (id) => shown.find((b) => b.id === id));
+
   return () => {
     left = true;
+    stopTips();
     document.title = "noveru";
   };
 }

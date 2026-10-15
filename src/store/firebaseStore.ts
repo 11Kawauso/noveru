@@ -86,6 +86,7 @@ function toMeta(id: string, ownerId: string, d: DocumentData): BookMeta {
     // 順番がまだない本は、新しいものほど左に来るようにする
     shelfOrder: d.shelfOrder ?? -toMillis(d.updatedAt),
     cover: d.cover ?? null,
+    createdAt: toMillis(d.createdAt ?? d.updatedAt),
     updatedAt: toMillis(d.updatedAt),
   };
 }

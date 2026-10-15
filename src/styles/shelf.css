@@ -400,3 +400,63 @@ body.dragging-book * {
 .cover-slot .cover::after {
   display: none;
 }
+
+/* ---- 本にマウスを合わせたときの情報 ---- */
+
+.book-tip {
+  position: fixed;
+  z-index: 250;
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  max-width: 300px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+  pointer-events: none;
+}
+
+.book-tip-cover {
+  flex: none;
+  width: 52px;
+}
+
+.book-tip-cover .cover-plain {
+  padding: 10% 8%;
+}
+
+.book-tip-cover .cover-plain-title {
+  font-size: 9px;
+}
+
+.book-tip-cover .cover-plain-author {
+  display: none;
+}
+
+.book-tip-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.book-tip-title {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.book-tip-author {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.book-tip-date {
+  color: var(--muted);
+  font-size: 12px;
+}

@@ -1,6 +1,7 @@
 // マイページ：上に本棚、下に表紙を向けて並べた本
 
 import { enableBookDrag, type DropResult } from "../lib/bookDrag";
+import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
 import { navigate } from "../router";
@@ -73,7 +74,7 @@ export function myPage(app: HTMLElement) {
       ...onShelf.map((b) =>
         h(
           "button",
-          { class: "spine", title: displayTitle(b), "data-book-id": b.id, onclick: () => openBookMenu(b) },
+          { class: "spine", "aria-label": displayTitle(b), "data-book-id": b.id, onclick: () => openBookMenu(b) },
           renderSpine(b),
         ),
       ),
@@ -145,6 +146,7 @@ export function myPage(app: HTMLElement) {
     makeGridSlot: () => h("div", { class: "cover-item cover-slot" }, h("div", { class: "cover" })),
     onDrop,
   });
+  const stopTips = enableBookTips(root, (id) => books.find((b) => b.id === id));
 
   const reload = async () => {
     try {
@@ -223,5 +225,8 @@ export function myPage(app: HTMLElement) {
   shelfBooks.append(h("p", { class: "shelf-empty" }, "読み込み中…"));
   reload();
 
-  return () => stopDrag();
+  return () => {
+    stopDrag();
+    stopTips();
+  };
 }

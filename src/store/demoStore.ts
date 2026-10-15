@@ -35,7 +35,7 @@ function makeId(): string {
 
 function meta(b: Book): BookMeta {
   const { body: _body, ...rest } = b;
-  return { ...rest, shelfOrder: rest.shelfOrder ?? -rest.updatedAt };
+  return { ...rest, shelfOrder: rest.shelfOrder ?? -rest.updatedAt, createdAt: rest.createdAt ?? rest.updatedAt };
 }
 
 export class DemoStore implements Store {
@@ -144,6 +144,7 @@ export class DemoStore implements Store {
         displayed: false,
         displayOrder: 0,
         shelfOrder: -now,
+        createdAt: now,
         updatedAt: now,
       });
     }

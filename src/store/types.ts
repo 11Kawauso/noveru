@@ -25,6 +25,8 @@ export interface BookMeta {
   shelfOrder: number;
   /** 圧縮した表紙画像（data URL）。なければ null */
   cover: string | null;
+  /** 作った日時（ミリ秒） */
+  createdAt: number;
   updatedAt: number;
 }
 

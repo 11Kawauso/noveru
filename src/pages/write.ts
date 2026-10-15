@@ -131,6 +131,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         displayOrder: 0,
         shelfOrder: 0,
         cover: draftCover,
+        createdAt: 0,
         updatedAt: 0,
       };
       previewBox.replaceChildren(renderCover(meta));
