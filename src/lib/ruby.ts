@@ -19,6 +19,7 @@ export interface Token {
 
 const KANJI = /^[\p{Script=Han}々〆ヵヶ]$/u;
 const BARS = new Set(["|", "｜"]);
+const DASHES = new Set(["—", "―", "─"]);
 const MAX_BASE = 20;
 const MAX_RUBY = 30;
 
@@ -102,6 +103,15 @@ export function tokenizeLine(line: string): Token[] {
         i = close + 1;
         continue;
       }
+    }
+
+    // ダッシュ「——」（2つ以上続くもの）は1つのまとまりにして、行やページの境目で分かれないようにする
+    if (DASHES.has(c) && chars[i + 1] === c) {
+      let end = i + 1;
+      while (chars[end + 1] === c) end++;
+      out.push({ html: `<span class="nobr">${escapeHtml(chars.slice(i, end + 1).join(""))}</span>` });
+      i = end + 1;
+      continue;
     }
 
     out.push(plain(c));

@@ -13,6 +13,8 @@ export interface ReadableBook {
 
 // ページの先頭に来てはいけない文字（句読点や閉じかっこ）
 const NO_LINE_START = new Set(Array.from("、。，．,.・：；？！?!ー）」』】〕〉》”’)]}ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々…‥"));
+// ページの最後に来てはいけない文字（開きかっこ）
+const NO_LINE_END = new Set(Array.from("「『（【〔〈《“‘([{"));
 
 const FONT_TIMEOUT = 4000;
 
@@ -76,8 +78,13 @@ function paginate(measure: HTMLElement, paragraphs: Token[][], vertical: boolean
         if (fits()) lo = mid;
         else hi = mid - 1;
       }
-      // 句読点などが次のページの先頭に来ないようにする
-      while (lo > 1 && NO_LINE_START.has(tokens[start + lo]?.ch ?? "")) lo--;
+      // 句読点などが次のページの先頭に、開きかっこがこのページの最後に来ないようにする
+      while (
+        lo > 1 &&
+        (NO_LINE_START.has(tokens[start + lo]?.ch ?? "") || NO_LINE_END.has(tokens[start + lo - 1]?.ch ?? ""))
+      ) {
+        lo--;
+      }
 
       if (lo === 0) {
         if (measure.childElementCount > 1) {
@@ -88,6 +95,8 @@ function paginate(measure: HTMLElement, paragraphs: Token[][], vertical: boolean
         lo = 1; // 1文字も入らないときでも先に進む
       }
       p.innerHTML = joinTokens(tokens, start, start + lo);
+      // 段落の途中でページが変わるので、このページの最後の行も行末までそろえる
+      p.className = "split";
       pushPage();
       start += lo;
     }

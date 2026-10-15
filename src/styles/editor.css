@@ -131,6 +131,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-break: strict;
+  text-align: justify;
 }
 
 /* ---- 保存の小窓 ---- */

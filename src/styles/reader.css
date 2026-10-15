@@ -67,6 +67,18 @@
 .page-content p {
   margin: 0;
   white-space: pre-wrap;
+  /* 両端そろえ：行の終わりをきれいにそろえる（段落の最後の行はそのまま） */
+  text-align: justify;
+}
+
+/* 次のページに続く段落は、最後の行も行末までそろえる */
+.page-content p.split {
+  text-align-last: justify;
+}
+
+/* 「——」が行やページの境目で分かれないようにする */
+.nobr {
+  white-space: nowrap;
 }
 
 .page-content ruby rt {
