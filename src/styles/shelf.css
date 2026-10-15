@@ -358,18 +358,26 @@
 /* 持ち上げている本（指やマウスについてくる） */
 .drag-ghost {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 300;
+  width: 96px;
   margin: 0;
   pointer-events: none;
   opacity: 0.95;
-  transform: rotate(-4deg) scale(1.06);
   filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.35));
 }
 
-.drag-ghost .spine-face,
-.drag-ghost .cover {
-  transition: none;
-  transform: none;
+.drag-ghost .cover-plain {
+  padding: 12% 9%;
+}
+
+.drag-ghost .cover-plain-title {
+  font-size: 13px;
+}
+
+.drag-ghost .cover-plain-author {
+  font-size: 9px;
 }
 
 body.dragging-book,

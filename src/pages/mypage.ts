@@ -202,6 +202,10 @@ export function myPage(app: HTMLElement) {
     grid: displayGrid,
     makeShelfSlot: (width) => h("div", { class: "spine-slot", style: width ? `width:${width}px` : "width:var(--spine-w)" }),
     makeGridSlot: () => h("div", { class: "cover-item cover-slot" }, h("div", { class: "cover" })),
+    makeGhost: (id) => {
+      const b = books.find((x) => x.id === id);
+      return h("div", {}, b ? renderCover(b) : null);
+    },
     onDrop,
   });
   const stopTips = enableBookTips(root, (id) => books.find((b) => b.id === id));

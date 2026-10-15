@@ -22,6 +22,8 @@ export interface DragOptions {
   makeShelfSlot(width: number): HTMLElement;
   /** 公開中に置くときの枠 */
   makeGridSlot(): HTMLElement;
+  /** 持ち上げている間、指やマウスについてくる見た目（表紙） */
+  makeGhost(id: string): HTMLElement;
   onDrop(result: DropResult): void;
 }
 
@@ -73,17 +75,12 @@ export function enableBookDrag(opts: DragOptions): () => void {
     const { item, id } = pending;
     clearPending();
 
-    const rect = item.getBoundingClientRect();
-    const ghost = item.cloneNode(true) as HTMLElement;
-    ghost.removeAttribute("data-book-id");
+    // 持ち上げた本は表紙の形にして、カーソルが真ん中に来るように持つ
+    const ghost = opts.makeGhost(id);
     ghost.classList.add("drag-ghost");
-    Object.assign(ghost.style, {
-      width: `${rect.width}px`,
-      height: `${rect.height}px`,
-      left: `${rect.left}px`,
-      top: `${rect.top}px`,
-    });
     document.body.append(ghost);
+    const gw = ghost.offsetWidth;
+    const gh = ghost.offsetHeight;
 
     const fromShelf = item.parentElement === opts.shelf;
     const face = item.querySelector<HTMLElement>(".spine-face");
@@ -94,7 +91,8 @@ export function enableBookDrag(opts: DragOptions): () => void {
     item.before(fromShelf ? shelfSlot : gridSlot);
     item.hidden = true;
 
-    drag = { item, id, ghost, offsetX: x - rect.left, offsetY: y - rect.top, shelfSlot, gridSlot, x, y, raf: 0 };
+    drag = { item, id, ghost, offsetX: gw / 2, offsetY: gh / 2, shelfSlot, gridSlot, x, y, raf: 0 };
+    moveGhost();
     opts.root.classList.add("is-dragging");
     document.body.classList.add("dragging-book");
     navigator.vibrate?.(15);
