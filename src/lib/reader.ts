@@ -3,6 +3,7 @@
 
 import { escapeHtml, h } from "./dom";
 import { tokenizeBody, type Token } from "./ruby";
+import { createTextSizeControl, onTextSizeChange } from "./textSize";
 
 export interface ReadableBook {
   title: string;
@@ -147,6 +148,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       leftBtn,
       counter,
       rightBtn,
+      createTextSizeControl(),
       opts.onClose ? h("button", { class: "btn", onclick: () => opts.onClose!() }, "閉じる") : null,
     ),
   );
@@ -252,6 +254,8 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
   });
 
   const onFontsDone = () => layout();
+  // 文字の大きさを変えたら、ページを区切り直す（読んでいた位置はだいたい保つ）
+  const stopTextSize = onTextSizeChange(() => layout());
   document.addEventListener("keydown", onKey);
   window.addEventListener("resize", fit);
 
@@ -269,6 +273,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       destroyed = true;
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", fit);
+      stopTextSize();
       document.fonts?.removeEventListener("loadingdone", onFontsDone);
       measurer.remove();
     },

@@ -4,6 +4,7 @@ import { renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
 import { compressCover } from "../lib/image";
 import { createReader } from "../lib/reader";
+import { createTextSizeControl, onTextSizeChange } from "../lib/textSize";
 import { navigate, replacePath, setLeaveGuard } from "../router";
 import { store, StoreError, type BookInput, type BookMeta } from "../store";
 
@@ -41,6 +42,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     h("a", { class: "btn btn-ghost", href: "#/" }, "← 本棚へ"),
     dirBadge,
     count,
+    createTextSizeControl(),
     h("div", { class: "toolbar-spacer" }),
     h("button", { class: "btn btn-ghost", onclick: () => showHelp() }, "書き方"),
     h("button", { class: "btn", onclick: () => showPreview() }, "プレビュー"),
@@ -89,6 +91,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   body.addEventListener("input", grow);
   window.addEventListener("resize", grow);
+  const stopTextSize = onTextSizeChange(grow);
 
   const save = async (): Promise<boolean> => {
     if (saving) return false;
@@ -330,6 +333,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   return () => {
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("resize", grow);
+    stopTextSize();
     closePreview?.();
   };
 }

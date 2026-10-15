@@ -42,8 +42,8 @@
   --font-body: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-ui: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
   --ui-size: 15px;
-  --body-size: 16px;
-  --body-line: 1.8;
+  --body-size: 14px;
+  --body-line: 1.75;
 
   /* 文庫本の形のページ（縦:横 = 約1.42:1） */
   --page-w: 440px;
@@ -480,4 +480,39 @@ main {
   main {
     padding: 16px 16px 48px;
   }
+}
+
+
+/* ---- 文字の大きさ（A− 14 A＋） ---- */
+
+.text-size {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.text-size-btn {
+  min-width: 38px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.text-size-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.text-size-value {
+  min-width: 2em;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
