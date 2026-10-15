@@ -3,7 +3,7 @@
 
 import { escapeHtml, h } from "./dom";
 import { tokenizeBody, type Token } from "./ruby";
-import { createTextSizeControl, onTextSizeChange } from "./textSize";
+import { createZoomControl, getZoom, onZoomChange } from "./pageZoom";
 
 export interface ReadableBook {
   title: string;
@@ -148,7 +148,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       leftBtn,
       counter,
       rightBtn,
-      createTextSizeControl(),
+      createZoomControl(),
       opts.onClose ? h("button", { class: "btn", onclick: () => opts.onClose!() }, "閉じる") : null,
     ),
   );
@@ -179,7 +179,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     }
   };
 
-  /** 画面に収まるようにページ全体を縮める（中の文字の並びは変えない） */
+  /** 画面に収まる大きさにページ全体を縮め、選んだ倍率をかける（中の文字の並びは変えない） */
   const fit = () => {
     const pw = page.offsetWidth;
     const ph = page.offsetHeight;
@@ -188,7 +188,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     const top = stage.getBoundingClientRect().top + window.scrollY;
     const availW = stage.clientWidth;
     const availH = window.innerHeight - top - controls - 40;
-    const scale = Math.min(1, availW / pw, Math.max(availH, 240) / ph);
+    const scale = Math.min(1, availW / pw, Math.max(availH, 240) / ph) * getZoom();
     page.style.transform = `scale(${scale})`;
     wrap.style.width = `${pw * scale}px`;
     wrap.style.height = `${ph * scale}px`;
@@ -254,8 +254,8 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
   });
 
   const onFontsDone = () => layout();
-  // 文字の大きさを変えたら、ページを区切り直す（読んでいた位置はだいたい保つ）
-  const stopTextSize = onTextSizeChange(() => layout());
+  // 拡大縮小したら、ページの見た目の大きさだけを変える
+  const stopZoom = onZoomChange(fit);
   document.addEventListener("keydown", onKey);
   window.addEventListener("resize", fit);
 
@@ -273,7 +273,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       destroyed = true;
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", fit);
-      stopTextSize();
+      stopZoom();
       document.fonts?.removeEventListener("loadingdone", onFontsDone);
       measurer.remove();
     },

@@ -14,7 +14,6 @@ import { publicPage } from "./pages/public";
 import { readPage } from "./pages/read";
 import { writePage } from "./pages/write";
 import { addRoute, setNotFound, startRouter } from "./router";
-import { applyTextSize } from "./lib/textSize";
 import { renderSidebar } from "./sidebar";
 import { store } from "./store";
 
@@ -29,7 +28,6 @@ addRoute("/history", historyPage);
 setNotFound(notFoundPage);
 
 if (store.demo) document.getElementById("demo-banner")!.hidden = false;
-applyTextSize();
 
 let started = false;
 store.onUserChanged((user) => {

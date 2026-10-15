@@ -9,12 +9,16 @@
 
 .reader-stage {
   display: flex;
-  justify-content: center;
   width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .page-wrap {
   position: relative;
+  flex: none;
+  /* 真ん中に置く。拡大して画面より大きいときは左端から見られる */
+  margin: 0 auto;
 }
 
 .page {

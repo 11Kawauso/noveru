@@ -483,9 +483,9 @@ main {
 }
 
 
-/* ---- 文字の大きさ（A− 14 A＋） ---- */
+/* ---- ページの拡大縮小（− 100% ＋） ---- */
 
-.text-size {
+.zoom {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border);
@@ -493,25 +493,29 @@ main {
   background: var(--paper);
 }
 
-.text-size-btn {
-  min-width: 38px;
+.zoom-btn {
+  min-width: 36px;
   min-height: 34px;
   padding: 0 8px;
   border: none;
   background: none;
   color: var(--text);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
 }
 
-.text-size-btn:disabled {
+.zoom-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-.text-size-value {
-  min-width: 2em;
+.zoom-value {
+  min-width: 3.4em;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--muted);
+  cursor: pointer;
   font-size: 12px;
   text-align: center;
   font-variant-numeric: tabular-nums;

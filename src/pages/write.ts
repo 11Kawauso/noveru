@@ -4,7 +4,7 @@ import { renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
 import { compressCover } from "../lib/image";
 import { createReader } from "../lib/reader";
-import { createTextSizeControl, onTextSizeChange } from "../lib/textSize";
+import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
 import { navigate, replacePath, setLeaveGuard } from "../router";
 import { store, StoreError, type BookInput, type BookMeta } from "../store";
 
@@ -42,7 +42,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     h("a", { class: "btn btn-ghost", href: "#/" }, "← 本棚へ"),
     dirBadge,
     count,
-    createTextSizeControl(),
+    createZoomControl(),
     h("div", { class: "toolbar-spacer" }),
     h("button", { class: "btn btn-ghost", onclick: () => showHelp() }, "書き方"),
     h("button", { class: "btn", onclick: () => showPreview() }, "プレビュー"),
@@ -91,7 +91,13 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   body.addEventListener("input", grow);
   window.addEventListener("resize", grow);
-  const stopTextSize = onTextSizeChange(grow);
+  // 拡大縮小：紙をまるごと大きく／小さくする（1行の字数は変わらない）
+  const applyZoom = () => {
+    paper.style.zoom = String(getZoom());
+    grow();
+  };
+  const stopZoom = onZoomChange(applyZoom);
+  applyZoom();
 
   const save = async (): Promise<boolean> => {
     if (saving) return false;
@@ -333,7 +339,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   return () => {
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("resize", grow);
-    stopTextSize();
+    stopZoom();
     closePreview?.();
   };
 }
