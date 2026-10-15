@@ -123,7 +123,6 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
   const counter = h("span", { class: "page-counter" });
   const leftBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? next() : prev()) }, "‹");
   const rightBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? prev() : next()) }, "›");
-  const dirBtn = h("button", { class: "btn btn-ghost", onclick: () => switchDirection() });
 
   // 区切りを計算するための見えないページ
   const measureContent = h("div", { class: "page-content" });
@@ -139,7 +138,6 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       leftBtn,
       counter,
       rightBtn,
-      dirBtn,
       opts.onClose ? h("button", { class: "btn", onclick: () => opts.onClose!() }, "閉じる") : null,
     ),
   );
@@ -190,16 +188,10 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     const progress = pages.length > 1 ? index / (pages.length - 1) : 0;
     el.classList.toggle("is-vertical", book.vertical);
     measurer.classList.toggle("is-vertical", book.vertical);
-    dirBtn.textContent = book.vertical ? "横書きで読む" : "縦書きで読む";
     pages = [titlePageHtml(book), ...paginate(measureContent, tokenizeBody(book.body), book.vertical)];
     index = pages.length > 1 && index > 0 ? Math.round(progress * (pages.length - 1)) : index;
     show();
     fit();
-  };
-
-  const switchDirection = () => {
-    book.vertical = !book.vertical;
-    layout();
   };
 
   const onKey = (e: KeyboardEvent) => {
