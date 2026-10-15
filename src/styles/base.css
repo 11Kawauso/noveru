@@ -58,6 +58,14 @@
 
 html {
   background: var(--bg);
+  /* スクロールバーは出さない（出たり消えたりで画面が左右にずれないように）。
+     マウスのホイールや指でのスクロールはそのまま使える */
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+.side-rail::-webkit-scrollbar {
+  display: none;
 }
 
 [hidden] {
@@ -111,6 +119,7 @@ textarea {
   background: var(--bg);
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .rail-logo {
