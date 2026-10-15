@@ -460,3 +460,64 @@ body.dragging-book * {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* ---- 見出しを押して並べ替え ---- */
+
+.sort-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 -8px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sort-heading:hover,
+.sort-heading[aria-expanded="true"] {
+  background: var(--paper);
+}
+
+.sort-caret {
+  font-family: var(--font-ui);
+  font-size: 0.6em;
+  color: var(--muted);
+}
+
+.popup-menu {
+  position: absolute;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+}
+
+.popup-menu-title {
+  padding: 6px 10px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.popup-menu-item {
+  padding: 9px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.popup-menu-item:hover,
+.popup-menu-item:focus-visible {
+  background: var(--bg);
+  outline: none;
+}

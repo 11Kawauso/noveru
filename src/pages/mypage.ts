@@ -4,6 +4,7 @@ import { enableBookDrag, type DropResult } from "../lib/bookDrag";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
+import { openPopupMenu } from "../lib/popupMenu";
 import { navigate } from "../router";
 import { store, StoreError, type BookMeta, type BookPlacement } from "../store";
 
@@ -11,11 +12,41 @@ export function publicUrl(uid: string): string {
   return `${location.origin}${location.pathname}#/u/${encodeURIComponent(uid)}`;
 }
 
+// 「本棚」「公開中」を押したときの並べ方
+const collator = new Intl.Collator("ja", { numeric: true, sensitivity: "base" });
+const SORTS: { label: string; compare: (a: BookMeta, b: BookMeta) => number }[] = [
+  { label: "作成が新しい順", compare: (a, b) => b.createdAt - a.createdAt },
+  { label: "作成が古い順", compare: (a, b) => a.createdAt - b.createdAt },
+  { label: "更新が新しい順", compare: (a, b) => b.updatedAt - a.updatedAt },
+  { label: "タイトル順（あいうえお）", compare: (a, b) => collator.compare(displayTitle(a), displayTitle(b)) },
+];
+
 export function myPage(app: HTMLElement) {
   const user = store.currentUser();
   if (!user) {
     navigate("/login");
     return;
+  }
+
+  /** 見出しのボタン。押すと並べ方を選べる */
+  function sortButton(label: string, displayed: boolean) {
+    const btn: HTMLButtonElement = h(
+      "button",
+      {
+        class: "sort-heading",
+        "aria-haspopup": "menu",
+        title: "並べ替え",
+        onclick: () =>
+          openPopupMenu(
+            btn,
+            `${label}を並べ替え`,
+            SORTS.map((s) => ({ label: s.label, onSelect: () => sortArea(displayed, s.compare, s.label) })),
+          ),
+      },
+      label,
+      h("span", { class: "sort-caret", "aria-hidden": "true" }, "▾"),
+    );
+    return btn;
   }
 
   const shelfBooks = h("div", { class: "shelf-books" });
@@ -28,7 +59,7 @@ export function myPage(app: HTMLElement) {
       h(
         "div",
         { class: "page-toolbar" },
-        h("h1", { class: "page-title" }, "本棚"),
+        h("h1", { class: "page-title" }, sortButton("本棚", false)),
         h(
           "div",
           { class: "toolbar-buttons" },
@@ -60,7 +91,7 @@ export function myPage(app: HTMLElement) {
         ),
       ),
       shelfArea,
-      h("section", { class: "display", "aria-label": "公開中" }, h("h2", { class: "section-title" }, "公開中"), displayGrid),
+      h("section", { class: "display", "aria-label": "公開中" }, h("h2", { class: "section-title" }, sortButton("公開中", true)), displayGrid),
   );
   app.append(root);
 
@@ -106,9 +137,34 @@ export function myPage(app: HTMLElement) {
   // 本のフォントが届いたら、背表紙の文字の入り方を測り直す
   document.fonts?.ready.then(fitSpines);
 
+  const idsOf = (displayed: boolean) =>
+    books
+      .filter((b) => b.displayed === displayed)
+      .sort((a, b) => (displayed ? a.displayOrder - b.displayOrder : a.shelfOrder - b.shelfOrder))
+      .map((b) => b.id);
+
+  /** 本棚・公開中の本を、選んだ順番に並べ直して保存する */
+  const sortArea = async (displayed: boolean, compare: (a: BookMeta, b: BookMeta) => number, label: string) => {
+    const sorted = books
+      .filter((b) => b.displayed === displayed)
+      .sort(compare)
+      .map((b) => b.id);
+    const ok = await arrange(displayed ? idsOf(false) : sorted, displayed ? sorted : idsOf(true));
+    if (ok) toast(`${displayed ? "公開中" : "本棚"}を「${label}」に並べました。`);
+  };
+
   /** ドラッグで置いたあと：置き場所と順番を保存する */
   const onDrop = async ({ movedId, shelfIds, displayIds }: DropResult) => {
     const before = books.find((b) => b.id === movedId);
+    const wasDisplayed = before?.displayed;
+    const ok = await arrange(shelfIds, displayIds);
+    if (ok && before && wasDisplayed !== before.displayed) {
+      toast(before.displayed ? "公開しました。" : "本棚に戻しました（非公開）。");
+    }
+  };
+
+  /** 本棚と公開中の並びを、この順番にして保存する。うまくいけば true */
+  const arrange = async (shelfIds: string[], displayIds: string[]): Promise<boolean> => {
     const changes: BookPlacement[] = [];
     const apply = (ids: string[], displayed: boolean) =>
       ids.forEach((id, order) => {
@@ -121,19 +177,17 @@ export function myPage(app: HTMLElement) {
         if (displayed) b.displayOrder = order;
         else b.shelfOrder = order;
       });
-    const wasDisplayed = before?.displayed;
     apply(shelfIds, false);
     apply(displayIds, true);
     draw();
-    if (changes.length === 0) return;
+    if (changes.length === 0) return true;
     try {
       await store.arrangeBooks(changes);
-      if (before && wasDisplayed !== before.displayed) {
-        toast(before.displayed ? "公開しました。" : "本棚に戻しました（非公開）。");
-      }
+      return true;
     } catch (e) {
       toast(e instanceof StoreError ? e.message : "並べ替えを保存できませんでした。");
       reload();
+      return false;
     }
   };
 
