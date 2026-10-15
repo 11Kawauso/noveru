@@ -46,7 +46,7 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
             "div",
             { class: "read-page-actions" },
             createLikeButton(uid, id),
-            isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "書き直す") : null,
+            isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "編集") : null,
           ),
         ),
         reader.el,
