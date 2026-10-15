@@ -126,12 +126,9 @@ export class FirebaseStore implements Store {
     onAuthStateChanged(this.auth, async (fbUser) => {
       if (this.signingUp) return;
       if (fbUser) {
-        let penName = fbUser.displayName ?? "";
-        if (!penName) {
-          const p = await this.getProfile(fbUser.uid).catch(() => null);
-          penName = p?.penName ?? "";
-        }
-        this.user = { uid: fbUser.uid, email: fbUser.email ?? "", penName };
+        const p = await this.getProfile(fbUser.uid).catch(() => null);
+        const penName = p?.penName || fbUser.displayName || "";
+        this.user = { uid: fbUser.uid, email: fbUser.email ?? "", penName, icon: p?.icon ?? null };
       } else {
         this.user = null;
       }
@@ -168,7 +165,7 @@ export class FirebaseStore implements Store {
           penName,
           createdAt: serverTimestamp(),
         });
-        this.user = { uid: cred.user.uid, email, penName };
+        this.user = { uid: cred.user.uid, email, penName, icon: null };
       } finally {
         this.signingUp = false;
       }
@@ -198,7 +195,24 @@ export class FirebaseStore implements Store {
     return wrap(async (): Promise<Profile | null> => {
       const snap = await getDoc(doc(this.db, "users", uid));
       if (!snap.exists()) return null;
-      return { penName: snap.data().penName ?? "" };
+      const d = snap.data();
+      return { penName: d.penName ?? "", bio: d.bio ?? "", icon: d.icon ?? null };
+    });
+  }
+
+  updateProfile(profile: Profile) {
+    return wrap(async () => {
+      const u = this.requireUser();
+      await setDoc(
+        doc(this.db, "users", u.uid),
+        { penName: profile.penName, bio: profile.bio, icon: profile.icon },
+        { merge: true },
+      );
+      if (this.auth.currentUser && profile.penName !== this.auth.currentUser.displayName) {
+        await updateProfile(this.auth.currentUser, { displayName: profile.penName }).catch(() => {});
+      }
+      this.user = { ...u, penName: profile.penName, icon: profile.icon };
+      this.emit();
     });
   }
 

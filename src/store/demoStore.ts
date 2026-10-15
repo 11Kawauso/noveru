@@ -11,6 +11,8 @@ interface DemoAccount {
   email: string;
   password: string;
   penName: string;
+  bio?: string;
+  icon?: string | null;
 }
 
 interface DemoMark {
@@ -72,7 +74,7 @@ export class DemoStore implements Store {
 
   currentUser(): User | null {
     const a = this.data.accounts.find((x) => x.uid === this.data.currentUid);
-    return a ? { uid: a.uid, email: a.email, penName: a.penName } : null;
+    return a ? { uid: a.uid, email: a.email, penName: a.penName, icon: a.icon ?? null } : null;
   }
 
   private requireUser(): User {
@@ -114,7 +116,15 @@ export class DemoStore implements Store {
 
   async getProfile(uid: string): Promise<Profile | null> {
     const a = this.data.accounts.find((x) => x.uid === uid);
-    return a ? { penName: a.penName } : null;
+    return a ? { penName: a.penName, bio: a.bio ?? "", icon: a.icon ?? null } : null;
+  }
+
+  async updateProfile(profile: Profile) {
+    const u = this.requireUser();
+    const a = this.data.accounts.find((x) => x.uid === u.uid)!;
+    Object.assign(a, profile);
+    this.save();
+    this.emit();
   }
 
   async listMyBooks() {

@@ -4,10 +4,17 @@ export interface User {
   uid: string;
   email: string;
   penName: string;
+  /** アイコン画像（data URL）。なければ null */
+  icon: string | null;
 }
 
+/** アカウントページに出す情報（誰でも見られる） */
 export interface Profile {
   penName: string;
+  /** プロフィール（自己紹介の文） */
+  bio: string;
+  /** アイコン画像（data URL）。なければ null */
+  icon: string | null;
 }
 
 /** 本棚や表紙の一覧で使う情報（本文は含まない） */
@@ -60,6 +67,8 @@ export interface Store {
   sendPasswordReset(email: string): Promise<void>;
 
   getProfile(uid: string): Promise<Profile | null>;
+  /** 自分のペンネーム・プロフィール・アイコンを変える */
+  updateProfile(profile: Profile): Promise<void>;
 
   /** 自分の本を全部（本棚の本も並べた本も） */
   listMyBooks(): Promise<BookMeta[]>;

@@ -190,12 +190,33 @@ textarea {
 }
 
 .rail-user {
-  margin: 8px 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  color: var(--muted);
+  text-decoration: none;
   text-align: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.rail-user:hover,
+.rail-user.active {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.rail-user-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted);
+  color: inherit;
   font-size: 13px;
 }
 

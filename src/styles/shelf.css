@@ -591,3 +591,101 @@ body.dragging-book * {
   color: var(--muted);
   font-size: 12px;
 }
+
+
+/* ---- アイコン ---- */
+
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  color: #f7efe2;
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ---- アカウントページ ---- */
+
+.account-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.account-name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.account-bio {
+  margin: 0;
+  max-width: 36em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* プロフィールを編集する小窓 */
+.edit-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.edit-profile h2 {
+  margin-bottom: 0;
+}
+
+.edit-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.bio-input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.bio-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+@media (max-width: 600px) {
+  .account-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .account-actions {
+    justify-content: center;
+  }
+}

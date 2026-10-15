@@ -27,7 +27,7 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
             "div",
             { class: "message-page" },
             h("p", {}, "この本は見つかりませんでした。本棚に戻されたか、削除された可能性があります。"),
-            h("a", { class: "btn", href: `#/u/${encodeURIComponent(uid)}` }, "公開中の本を見る"),
+            h("a", { class: "btn", href: `#/u/${encodeURIComponent(uid)}` }, "作者のページを見る"),
           ),
         );
         return;
@@ -41,7 +41,7 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
           { class: "read-page-head" },
           isMine
             ? h("a", { href: "#/" }, "← 本棚へ")
-            : h("a", { href: `#/u/${encodeURIComponent(uid)}` }, "← 公開中の本へ"),
+            : h("a", { href: `#/u/${encodeURIComponent(uid)}` }, "← 作者のページへ"),
           h(
             "div",
             { class: "read-page-actions" },

@@ -71,26 +71,26 @@ export function myPage(app: HTMLElement) {
             "button",
             {
               class: "btn",
-              title: "並べた本を見せるためのURLをコピーします",
+              title: "アカウントページ（公開中の本が見られるページ）のURLをコピーします",
               onclick: async () => {
                 try {
                   await navigator.clipboard.writeText(publicUrl(user.uid));
-                  toast("公開ページのURLをコピーしました。");
+                  toast("アカウントページのURLをコピーしました。");
                 } catch {
                   openDialog(
                     h(
                       "div",
                       {},
-                      h("h2", {}, "公開ページのURL"),
+                      h("h2", {}, "アカウントページのURL"),
                       h("input", { class: "url-box", readonly: true, value: publicUrl(user.uid) }),
                     ),
                   );
                 }
               },
             },
-            "公開ページのURLをコピー",
+            "URLをコピー",
           ),
-          h("a", { class: "btn", href: `#/u/${encodeURIComponent(user.uid)}` }, "公開ページを見る"),
+          h("a", { class: "btn", href: `#/u/${encodeURIComponent(user.uid)}` }, "アカウントページ"),
           h("a", { class: "btn btn-primary", href: "#/write/new" }, "＋ 新しく書く"),
         ),
       ),

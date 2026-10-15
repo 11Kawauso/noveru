@@ -1,6 +1,7 @@
 // 画面の左側のメニュー（ロゴ・本棚・書く・色合い・ログアウト）
 // 書く紙が縦長なので、上ではなく左に置いて高さを広く使う。
 
+import { renderAvatar } from "./lib/avatar";
 import { h } from "./lib/dom";
 import { getTheme, toggleTheme } from "./lib/theme";
 import { navigate } from "./router";
@@ -40,8 +41,10 @@ function markActive() {
           ? "likes"
           : path === "/history"
             ? "history"
-            : "";
-  document.querySelectorAll<HTMLElement>(".rail-item[data-key]").forEach((el) => {
+            : path.startsWith("/u/")
+              ? "account"
+              : "";
+  document.querySelectorAll<HTMLElement>(".side-rail [data-key]").forEach((el) => {
     el.classList.toggle("active", el.dataset.key === key);
   });
 }
@@ -70,7 +73,19 @@ export function renderSidebar(user: User | null) {
     user ? railLink("#/history", "clock", "履歴", "history") : null,
     h("div", { class: "rail-spacer" }),
     themeBtn,
-    user ? h("span", { class: "rail-user", title: user.email }, user.penName || user.email) : null,
+    user
+      ? h(
+          "a",
+          {
+            class: "rail-user",
+            href: `#/u/${encodeURIComponent(user.uid)}`,
+            "data-key": "account",
+            title: "アカウントページ",
+          },
+          renderAvatar(user.penName || user.email, user.icon, 26),
+          h("span", { class: "rail-user-name" }, user.penName || user.email),
+        )
+      : null,
     user
       ? h(
           "button",

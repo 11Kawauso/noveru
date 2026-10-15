@@ -27,12 +27,16 @@ service cloud.firestore {
         && (d.cover == null || (d.cover is string && d.cover.size() <= 300000));
     }
 
-    // ペンネーム
+    // ペンネーム・プロフィール・アイコン（誰でも見られる）
     match /users/{uid} {
       allow read: if true;
       allow create, update: if isOwner(uid)
         && request.resource.data.penName is string
-        && request.resource.data.penName.size() <= 40;
+        && request.resource.data.penName.size() <= 40
+        && (!('bio' in request.resource.data)
+            || (request.resource.data.bio is string && request.resource.data.bio.size() <= 1000))
+        && (!('icon' in request.resource.data) || request.resource.data.icon == null
+            || (request.resource.data.icon is string && request.resource.data.icon.size() <= 150000));
     }
 
     // タイトル・作者・表紙など
