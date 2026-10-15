@@ -129,6 +129,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         vertical,
         displayed: false,
         displayOrder: 0,
+        shelfOrder: 0,
         cover: draftCover,
         updatedAt: 0,
       };

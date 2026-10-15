@@ -25,7 +25,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
             h("span", { class: "empty-note" }, "ほかの人には、このように見えます"),
           )
         : null,
-      h("div", { class: "public-head" }, name, h("p", {}, "が並べている本")),
+      h("div", { class: "public-head" }, name, h("p", {}, "が公開している本")),
       note,
       grid,
     ),

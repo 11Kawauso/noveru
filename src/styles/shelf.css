@@ -42,7 +42,8 @@
 /* ---- 本棚 ---- */
 
 .shelf {
-  --row-h: 236px; /* 1段の高さ（上のすき間 + 本 + 棚板） */
+  --row-h: 240px; /* 1段の高さ（上のすき間 + 本 + 棚板） */
+  --spine-w: 32px; /* 本1冊分の背表紙の幅 */
   --board: 14px;
   padding: 0 14px;
   border: 12px solid var(--wood);
@@ -91,18 +92,20 @@
   padding: 0;
   border: none;
   background: none;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .spine-face {
   --book-color: #7a4b3a;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  width: 42px;
+  justify-content: center;
+  /* 横幅は「本1冊分」の倍数。タイトルが長いときは JS で増やす */
+  width: var(--spine-w);
   height: 200px;
-  padding: 14px 0 12px;
+  padding: 14px 0;
   border-radius: 3px 3px 0 0;
   background:
     linear-gradient(90deg, rgb(0 0 0 / 0.22), rgb(255 255 255 / 0.12) 30%, rgb(0 0 0 / 0.08) 75%, rgb(0 0 0 / 0.25)),
@@ -112,42 +115,44 @@
   transition: transform 0.15s;
 }
 
-.spine:nth-child(3n + 2) .spine-face {
-  height: 190px;
-  width: 38px;
-}
-
-.spine:nth-child(4n + 3) .spine-face {
-  height: 208px;
-  width: 46px;
-}
-
 .spine:hover .spine-face,
 .spine:focus-visible .spine-face {
   transform: translateY(-8px);
 }
 
-.spine-title,
-.spine-author {
+.spine-title {
   writing-mode: vertical-rl;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-body);
-}
-
-.spine-title {
-  flex: 1;
-  min-height: 0;
   font-size: 15px;
   font-weight: 600;
+  /* 1行の幅＝本1冊分の幅。2冊分にすると2行になる */
+  line-height: var(--spine-w);
   letter-spacing: 0.08em;
 }
 
-.spine-author {
-  max-height: 5em;
-  font-size: 11px;
-  opacity: 0.85;
+.spine-title.wrap {
+  white-space: normal;
+}
+
+/* ドラッグ中、本が入る場所 */
+.spine-slot {
+  flex: none;
+  height: calc(var(--row-h) - var(--board));
+  margin: 0 0 var(--board);
+  display: flex;
+  align-items: flex-end;
+}
+
+.spine-slot::before {
+  content: "";
+  width: 100%;
+  height: 200px;
+  border: 2px dashed rgb(255 240 220 / 0.55);
+  border-radius: 3px 3px 0 0;
 }
 
 /* ---- 並べた本（横3列） ---- */
@@ -336,4 +341,62 @@
     border-width: 8px;
     border-bottom-width: 0;
   }
+}
+
+/* ---- ドラッグ ---- */
+
+.cover-item {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mypage .cover-item {
+  cursor: grab;
+}
+
+/* 持ち上げている本（指やマウスについてくる） */
+.drag-ghost {
+  position: fixed;
+  z-index: 300;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0.95;
+  transform: rotate(-4deg) scale(1.06);
+  filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.35));
+}
+
+.drag-ghost .spine-face,
+.drag-ghost .cover {
+  transition: none;
+  transform: none;
+}
+
+body.dragging-book,
+body.dragging-book * {
+  cursor: grabbing !important;
+}
+
+/* ドラッグ中は、公開中の場所を点線で示す（本がなくても置けるように） */
+.is-dragging .cover-grid {
+  min-height: 200px;
+  outline: 2px dashed var(--border);
+  outline-offset: 12px;
+  border-radius: 4px;
+}
+
+.is-dragging .shelf-empty {
+  display: none;
+}
+
+/* 公開中に置くときの枠 */
+.cover-slot .cover {
+  background: transparent;
+  border: 2px dashed var(--muted);
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.cover-slot .cover::after {
+  display: none;
 }

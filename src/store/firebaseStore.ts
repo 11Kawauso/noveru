@@ -33,7 +33,7 @@ import {
   type Firestore,
   type Timestamp,
 } from "firebase/firestore";
-import type { Book, BookInput, BookMeta, Profile, Store, User } from "./types";
+import type { Book, BookInput, BookMeta, BookPlacement, Profile, Store, User } from "./types";
 import { StoreError } from "./types";
 
 type FirebaseConfig = Record<string, string>;
@@ -83,6 +83,8 @@ function toMeta(id: string, ownerId: string, d: DocumentData): BookMeta {
     vertical: d.vertical ?? true,
     displayed: d.displayed ?? false,
     displayOrder: d.displayOrder ?? 0,
+    // 順番がまだない本は、新しいものほど左に来るようにする
+    shelfOrder: d.shelfOrder ?? -toMillis(d.updatedAt),
     cover: d.cover ?? null,
     updatedAt: toMillis(d.updatedAt),
   };
@@ -229,7 +231,13 @@ export class FirebaseStore implements Store {
       if (bookId) {
         batch.update(metaRef, meta);
       } else {
-        batch.set(metaRef, { ...meta, displayed: false, displayOrder: 0, createdAt: serverTimestamp() });
+        batch.set(metaRef, {
+          ...meta,
+          displayed: false,
+          displayOrder: 0,
+          shelfOrder: -Date.now(), // 新しい本は本棚の左端に入る
+          createdAt: serverTimestamp(),
+        });
       }
       batch.set(textRef, { body: input.body });
       await batch.commit();
@@ -240,10 +248,27 @@ export class FirebaseStore implements Store {
   setDisplayed(bookId: string, displayed: boolean) {
     return wrap(async () => {
       const u = this.requireUser();
-      await updateDoc(doc(this.db, "users", u.uid, "books", bookId), {
-        displayed,
-        displayOrder: displayed ? Date.now() : 0,
-      });
+      await updateDoc(
+        doc(this.db, "users", u.uid, "books", bookId),
+        displayed ? { displayed, displayOrder: Date.now() } : { displayed, shelfOrder: -Date.now() },
+      );
+    });
+  }
+
+  arrangeBooks(changes: BookPlacement[]) {
+    return wrap(async () => {
+      const u = this.requireUser();
+      // 1回にまとめて書ける数（500件）ごとに分けて保存する
+      for (let i = 0; i < changes.length; i += 450) {
+        const batch = writeBatch(this.db);
+        for (const c of changes.slice(i, i + 450)) {
+          batch.update(
+            doc(this.db, "users", u.uid, "books", c.id),
+            c.displayed ? { displayed: true, displayOrder: c.order } : { displayed: false, shelfOrder: c.order },
+          );
+        }
+        await batch.commit();
+      }
     });
   }
 

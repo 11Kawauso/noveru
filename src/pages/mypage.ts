@@ -1,9 +1,10 @@
 // マイページ：上に本棚、下に表紙を向けて並べた本
 
-import { displayTitle, renderCover, renderSpine } from "../lib/cover";
+import { enableBookDrag, type DropResult } from "../lib/bookDrag";
+import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
 import { navigate } from "../router";
-import { store, StoreError, type BookMeta } from "../store";
+import { store, StoreError, type BookMeta, type BookPlacement } from "../store";
 
 export function publicUrl(uid: string): string {
   return `${location.origin}${location.pathname}#/u/${encodeURIComponent(uid)}`;
@@ -18,10 +19,9 @@ export function myPage(app: HTMLElement) {
 
   const shelfBooks = h("div", { class: "shelf-books" });
   const displayGrid = h("div", { class: "cover-grid" });
-  const displayEmpty = h("p", { class: "empty-note" }, "本棚の本を選んで「並べる」を押すと、ここに表紙を向けて並びます。");
+  const shelfArea = h("section", { class: "shelf", "aria-label": "本棚" }, shelfBooks);
 
-  app.append(
-    h(
+  const root = h(
       "div",
       { class: "mypage" },
       h(
@@ -58,28 +58,22 @@ export function myPage(app: HTMLElement) {
           h("a", { class: "btn btn-primary", href: "#/write/new" }, "＋ 新しく書く"),
         ),
       ),
-      h("section", { class: "shelf", "aria-label": "本棚" }, shelfBooks),
-      h(
-        "section",
-        { class: "display", "aria-label": "並べている本" },
-        h("h2", { class: "section-title" }, "並べている本"),
-        displayEmpty,
-        displayGrid,
-      ),
-    ),
+      shelfArea,
+      h("section", { class: "display", "aria-label": "公開中" }, h("h2", { class: "section-title" }, "公開中"), displayGrid),
   );
+  app.append(root);
 
   let books: BookMeta[] = [];
 
   const draw = () => {
-    const onShelf = books.filter((b) => !b.displayed).sort((a, b) => b.updatedAt - a.updatedAt);
+    const onShelf = books.filter((b) => !b.displayed).sort((a, b) => a.shelfOrder - b.shelfOrder);
     const displayed = books.filter((b) => b.displayed).sort((a, b) => a.displayOrder - b.displayOrder);
 
     shelfBooks.replaceChildren(
       ...onShelf.map((b) =>
         h(
           "button",
-          { class: "spine", title: displayTitle(b), onclick: () => openBookMenu(b) },
+          { class: "spine", title: displayTitle(b), "data-book-id": b.id, onclick: () => openBookMenu(b) },
           renderSpine(b),
         ),
       ),
@@ -89,23 +83,68 @@ export function myPage(app: HTMLElement) {
         h(
           "p",
           { class: "shelf-empty" },
-          books.length === 0 ? "本棚はまだ空です。「＋ 新しく書く」から小説を書いてみましょう。" : "本棚の本はすべて並べています。",
+          books.length === 0 ? "本棚はまだ空です。「＋ 新しく書く」から小説を書いてみましょう。" : "本棚の本はすべて公開中です。",
         ),
       );
     }
 
-    displayEmpty.hidden = displayed.length > 0;
     displayGrid.replaceChildren(
       ...displayed.map((b) =>
         h(
           "button",
-          { class: "cover-item", onclick: () => openBookMenu(b) },
+          { class: "cover-item", "data-book-id": b.id, onclick: () => openBookMenu(b) },
           renderCover(b),
           h("span", { class: "cover-caption" }, displayTitle(b)),
         ),
       ),
     );
+    fitSpines();
   };
+
+  const fitSpines = () => shelfBooks.querySelectorAll<HTMLElement>(".spine-face").forEach(fitSpine);
+  // 本のフォントが届いたら、背表紙の文字の入り方を測り直す
+  document.fonts?.ready.then(fitSpines);
+
+  /** ドラッグで置いたあと：置き場所と順番を保存する */
+  const onDrop = async ({ movedId, shelfIds, displayIds }: DropResult) => {
+    const before = books.find((b) => b.id === movedId);
+    const changes: BookPlacement[] = [];
+    const apply = (ids: string[], displayed: boolean) =>
+      ids.forEach((id, order) => {
+        const b = books.find((x) => x.id === id);
+        if (!b) return;
+        const current = displayed ? b.displayOrder : b.shelfOrder;
+        if (b.displayed === displayed && current === order) return;
+        changes.push({ id, displayed, order });
+        b.displayed = displayed;
+        if (displayed) b.displayOrder = order;
+        else b.shelfOrder = order;
+      });
+    const wasDisplayed = before?.displayed;
+    apply(shelfIds, false);
+    apply(displayIds, true);
+    draw();
+    if (changes.length === 0) return;
+    try {
+      await store.arrangeBooks(changes);
+      if (before && wasDisplayed !== before.displayed) {
+        toast(before.displayed ? "公開しました。" : "本棚に戻しました（非公開）。");
+      }
+    } catch (e) {
+      toast(e instanceof StoreError ? e.message : "並べ替えを保存できませんでした。");
+      reload();
+    }
+  };
+
+  const stopDrag = enableBookDrag({
+    root,
+    shelf: shelfBooks,
+    shelfArea,
+    grid: displayGrid,
+    makeShelfSlot: (width) => h("div", { class: "spine-slot", style: width ? `width:${width}px` : "width:var(--spine-w)" }),
+    makeGridSlot: () => h("div", { class: "cover-item cover-slot" }, h("div", { class: "cover" })),
+    onDrop,
+  });
 
   const reload = async () => {
     try {
@@ -148,16 +187,17 @@ export function myPage(app: HTMLElement) {
             "div",
             { class: "book-menu-actions" },
             b.displayed
-              ? act("本棚に戻す", async () => {
+              ? act("本棚に戻す（非公開）", async () => {
                   await store.setDisplayed(b.id, false);
                   await reload();
+                  toast("本棚に戻しました（非公開）。");
                 })
               : act(
-                  "並べる",
+                  "公開する",
                   async () => {
                     await store.setDisplayed(b.id, true);
                     await reload();
-                    toast("本棚から出して並べました。");
+                    toast("公開しました。");
                   },
                   "btn btn-primary",
                 ),
@@ -182,4 +222,6 @@ export function myPage(app: HTMLElement) {
 
   shelfBooks.append(h("p", { class: "shelf-empty" }, "読み込み中…"));
   reload();
+
+  return () => stopDrag();
 }

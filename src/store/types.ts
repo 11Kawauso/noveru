@@ -19,8 +19,10 @@ export interface BookMeta {
   vertical: boolean;
   /** true なら本棚から出して表紙を向けて並べている */
   displayed: boolean;
-  /** 並べた順番（小さいほど先） */
+  /** 公開中に並べた順番（小さいほど先） */
   displayOrder: number;
+  /** 本棚の中での順番（小さいほど左） */
+  shelfOrder: number;
   /** 圧縮した表紙画像（data URL）。なければ null */
   cover: string | null;
   updatedAt: number;
@@ -63,7 +65,17 @@ export interface Store {
   /** 新しい本なら id を省略。保存した本の id を返す */
   saveBook(input: BookInput, bookId?: string): Promise<string>;
   setDisplayed(bookId: string, displayed: boolean): Promise<void>;
+  /** 本の置き場所（本棚／公開中）と順番をまとめて変える */
+  arrangeBooks(changes: BookPlacement[]): Promise<void>;
   deleteBook(bookId: string): Promise<void>;
+}
+
+/** 本の置き場所と順番の変更（ドラッグで並べ替えたとき） */
+export interface BookPlacement {
+  id: string;
+  displayed: boolean;
+  /** displayed が true なら公開中での順番、false なら本棚での順番 */
+  order: number;
 }
 
 /** 画面に出すためのエラー（メッセージは日本語） */

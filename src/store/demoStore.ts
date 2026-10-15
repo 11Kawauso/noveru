@@ -1,7 +1,7 @@
 // お試しモード：Firebase の代わりにブラウザの中（localStorage）に保存する仕組み
 // Firebase を設定する前に画面を試すためのもの。
 
-import type { Book, BookInput, BookMeta, Profile, Store, User } from "./types";
+import type { Book, BookInput, BookMeta, BookPlacement, Profile, Store, User } from "./types";
 import { StoreError } from "./types";
 
 const KEY = "noveru-demo";
@@ -35,7 +35,7 @@ function makeId(): string {
 
 function meta(b: Book): BookMeta {
   const { body: _body, ...rest } = b;
-  return rest;
+  return { ...rest, shelfOrder: rest.shelfOrder ?? -rest.updatedAt };
 }
 
 export class DemoStore implements Store {
@@ -143,6 +143,7 @@ export class DemoStore implements Store {
         ownerId: u.uid,
         displayed: false,
         displayOrder: 0,
+        shelfOrder: -now,
         updatedAt: now,
       });
     }
@@ -155,7 +156,20 @@ export class DemoStore implements Store {
     const b = this.data.books.find((x) => x.ownerId === u.uid && x.id === bookId);
     if (!b) throw new StoreError("本が見つかりません。");
     b.displayed = displayed;
-    b.displayOrder = displayed ? Date.now() : 0;
+    if (displayed) b.displayOrder = Date.now();
+    else b.shelfOrder = -Date.now();
+    this.save();
+  }
+
+  async arrangeBooks(changes: BookPlacement[]) {
+    const u = this.requireUser();
+    for (const c of changes) {
+      const b = this.data.books.find((x) => x.ownerId === u.uid && x.id === c.id);
+      if (!b) continue;
+      b.displayed = c.displayed;
+      if (c.displayed) b.displayOrder = c.order;
+      else b.shelfOrder = c.order;
+    }
     this.save();
   }
 
