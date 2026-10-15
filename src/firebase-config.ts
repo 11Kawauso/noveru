@@ -7,10 +7,10 @@
 // apiKey が空のままだと「お試しモード」で動きます。
 
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyDG4qAJoQrUt2gjOS5mFHgB2gMmgvlf7c0",
+  authDomain: "noveru-5f2cc.firebaseapp.com",
+  projectId: "noveru-5f2cc",
+  storageBucket: "noveru-5f2cc.firebasestorage.app",
+  messagingSenderId: "301412881288",
+  appId: "1:301412881288:web:2b0328b24b472185a9a03d",
 };
