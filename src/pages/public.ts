@@ -169,8 +169,6 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
         ),
         h("label", { class: "field" }, h("span", {}, "ペンネーム"), penName),
         h("label", { class: "field" }, h("span", {}, "プロフィール"), bio, bioCount),
-        h("p", { class: "form-note" }, "空行は1つまでにまとめて保存します。"),
-        h("p", { class: "form-note" }, "ペンネームを変えても、保存済みの作品の作者名は変わりません（作品ごとに編集できます）。"),
         error,
         h("div", { class: "dialog-buttons" }, h("button", { class: "btn", onclick: () => close() }, "やめる"), saveBtn),
       ),

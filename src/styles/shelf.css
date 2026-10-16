@@ -614,7 +614,10 @@ body.dragging-book * {
   display: flex;
   align-items: flex-start;
   gap: 24px;
-  margin-bottom: 40px;
+  /* プロフィールと「公開している作品」の間に線を引く */
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
 }
 
 .account-info {
@@ -669,11 +672,14 @@ body.dragging-book * {
 }
 
 .bio-input {
+  /* 枠の大きさは固定。長いときは中でスクロールする */
+  height: calc(1.6em * 5 + 20px);
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--paper);
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
   line-height: 1.6;
 }
 
