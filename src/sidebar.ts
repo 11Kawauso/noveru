@@ -2,7 +2,7 @@
 // 書く紙が縦長なので、上ではなく左に置いて高さを広く使う。
 
 import { renderAvatar } from "./lib/avatar";
-import { h } from "./lib/dom";
+import { confirmDialog, h } from "./lib/dom";
 import { getTheme, toggleTheme } from "./lib/theme";
 import { navigate } from "./router";
 import { store, type User } from "./store";
@@ -92,6 +92,7 @@ export function renderSidebar(user: User | null) {
           {
             class: "rail-item",
             onclick: async () => {
+              if (!(await confirmDialog("ログアウトしますか？", "ログアウト"))) return;
               await store.signOut();
               navigate("/login");
             },
