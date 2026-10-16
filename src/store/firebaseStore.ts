@@ -176,7 +176,26 @@ export class FirebaseStore implements Store {
 
   signIn(email: string, password: string) {
     return wrap(async () => {
-      await signInWithEmailAndPassword(this.auth, email, password);
+      const cred = await signInWithEmailAndPassword(this.auth, email, password);
+      // プロフィール（アイコンなど）の読み込みが終わって、ログイン状態になるまで待つ
+      await this.waitForUser(cred.user.uid);
+    });
+  }
+
+  /** ログインした人の情報がそろうまで待つ（最大10秒） */
+  private waitForUser(uid: string): Promise<void> {
+    if (this.user?.uid === uid) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.listeners = this.listeners.filter((l) => l !== check);
+        resolve();
+      };
+      const check = (u: User | null) => {
+        if (u?.uid === uid) done();
+      };
+      const timer = setTimeout(done, 10_000);
+      this.listeners.push(check);
     });
   }
 

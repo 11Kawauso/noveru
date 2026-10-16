@@ -13,7 +13,7 @@ import { notFoundPage } from "./pages/notfound";
 import { publicPage } from "./pages/public";
 import { readPage } from "./pages/read";
 import { writePage } from "./pages/write";
-import { addRoute, setNotFound, startRouter } from "./router";
+import { addRoute, navigate, setNotFound, startRouter } from "./router";
 import { renderSidebar } from "./sidebar";
 import { store } from "./store";
 
@@ -35,5 +35,8 @@ store.onUserChanged((user) => {
   if (!started) {
     started = true;
     startRouter();
+  } else if (user && location.hash.replace(/^#/, "") === "/login") {
+    // ログインが終わったのにログイン画面のままなら、本棚へ
+    navigate("/");
   }
 });
