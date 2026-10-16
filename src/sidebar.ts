@@ -77,13 +77,13 @@ export function renderSidebar(user: User | null) {
       ? h(
           "a",
           {
-            class: "rail-user",
+            class: "rail-item rail-user",
             href: `#/u/${encodeURIComponent(user.uid)}`,
             "data-key": "account",
             title: "アカウントページ",
           },
-          renderAvatar(user.penName || user.email, user.icon, 26),
-          h("span", { class: "rail-user-name" }, user.penName || user.email),
+          h("span", { class: "rail-icon" }, renderAvatar(user.penName || user.email, user.icon, 24)),
+          h("span", { class: "rail-label rail-user-name" }, user.penName || user.email),
         )
       : null,
     user

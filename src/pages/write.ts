@@ -2,6 +2,7 @@
 
 import { renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
+import { backLink } from "../lib/backLink";
 import { compressCover } from "../lib/image";
 import { createReader } from "../lib/reader";
 import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
@@ -39,7 +40,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   const toolbar = h(
     "div",
     { class: "writer-toolbar" },
-    h("a", { class: "btn btn-ghost", href: "#/" }, "← 本棚へ"),
+    backLink("/", "btn btn-ghost"),
     dirBadge,
     count,
     createZoomControl(),
@@ -90,6 +91,19 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   };
 
   body.addEventListener("input", grow);
+
+  // 縦書きの紙は横に伸びるので、マウスのホイール（上下）で左右に動けるようにする
+  // （スクロールバーを出していないため）。下に回すと先（左）へ進む
+  scroller.addEventListener(
+    "wheel",
+    (e) => {
+      if (!vertical || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (scroller.scrollWidth <= scroller.clientWidth) return;
+      e.preventDefault();
+      scroller.scrollLeft -= e.deltaY;
+    },
+    { passive: false },
+  );
   window.addEventListener("resize", grow);
   // 拡大縮小：紙をまるごと大きく／小さくする（1行の字数は変わらない）
   const applyZoom = () => {

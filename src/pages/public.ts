@@ -2,6 +2,7 @@
 // 自分のページなら「プロフィールを編集」ができる。
 
 import { renderAvatar } from "../lib/avatar";
+import { backLink } from "../lib/backLink";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
@@ -10,7 +11,16 @@ import type { BookMeta, Profile } from "../store";
 import { store, StoreError } from "../store";
 import { publicUrl } from "./mypage";
 
-const MAX_BIO = 300;
+const MAX_BIO = 200;
+
+/** 空行が続きすぎないようにする（空行は1つまで）。前後の空白も取る */
+function tidyBio(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t\u3000]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 export function publicPage(app: HTMLElement, params: Record<string, string>) {
   const { uid } = params;
@@ -28,14 +38,10 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
     h(
       "div",
       { class: "public-page" },
-      isMine
-        ? h(
-            "div",
-            { class: "read-page-head" },
-            h("a", { href: "#/" }, "← 本棚へ"),
-            h("span", { class: "empty-note" }, "ほかの人には、このように見えます"),
-          )
-        : null,
+      (() => {
+        const back = backLink(isMine ? "/" : null);
+        return back ? h("div", { class: "read-page-head" }, back) : null;
+      })(),
       head,
       h("section", { class: "account-works" }, worksTitle, note, grid),
     ),
@@ -128,7 +134,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
           }
           saveBtn.disabled = true;
           try {
-            const next: Profile = { penName: name, bio: bio.value.trim(), icon: draftIcon };
+            const next: Profile = { penName: name, bio: tidyBio(bio.value), icon: draftIcon };
             await store.updateProfile(next);
             profile = next;
             drawHead();
@@ -163,6 +169,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
         ),
         h("label", { class: "field" }, h("span", {}, "ペンネーム"), penName),
         h("label", { class: "field" }, h("span", {}, "プロフィール"), bio, bioCount),
+        h("p", { class: "form-note" }, "空行は1つまでにまとめて保存します。"),
         h("p", { class: "form-note" }, "ペンネームを変えても、保存済みの作品の作者名は変わりません（作品ごとに編集できます）。"),
         error,
         h("div", { class: "dialog-buttons" }, h("button", { class: "btn", onclick: () => close() }, "やめる"), saveBtn),

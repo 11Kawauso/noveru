@@ -65,8 +65,12 @@ html {
   scrollbar-width: none;
 }
 
-html::-webkit-scrollbar,
-.side-rail::-webkit-scrollbar {
+/* スクロールバーはどこにも出さない（ホイールや指でのスクロールはそのまま使える） */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
   display: none;
 }
 
@@ -189,35 +193,15 @@ textarea {
   flex: 1;
 }
 
-.rail-user {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 6px 0 2px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  color: var(--muted);
-  text-decoration: none;
-  text-align: center;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-
-.rail-user:hover,
-.rail-user.active {
-  background: var(--paper);
-  color: var(--text);
-}
-
+/* アカウント（ペンネーム）。アイコンはほかのボタンと同じ位置、名前は真ん中 */
 .rail-user-name {
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: inherit;
-  font-size: 13px;
+}
+
+.rail-user .avatar {
+  display: flex;
 }
 
 .page-area {

@@ -636,6 +636,10 @@ body.dragging-book * {
 .account-bio {
   margin: 0;
   max-width: 36em;
+  /* 長いプロフィールは5行分までにして、中でスクロールする */
+  max-height: 8em;
+  overflow-y: auto;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

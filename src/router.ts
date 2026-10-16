@@ -15,6 +15,8 @@ let notFound: PageFn = () => {};
 let cleanup: Cleanup;
 let currentHash = "";
 let ignoreNext = false;
+/** このタブでアプリを開いてから何ページ目か（0 が最初のページ）。「戻る」に使う */
+let pageIndex = -1;
 
 /** この関数が false を返すあいだは、ほかの画面に移る前に確認する */
 let leaveGuard: (() => boolean) | null = null;
@@ -42,7 +44,7 @@ export function navigate(path: string) {
 
 /** 画面を作り直さずに URL だけ書き換える（新しい本を保存したときなど） */
 export function replacePath(path: string) {
-  history.replaceState(null, "", `#${path}`);
+  history.replaceState(history.state, "", `#${path}`);
   currentHash = location.hash;
 }
 
@@ -58,6 +60,7 @@ export function render() {
   app.replaceChildren();
   window.scrollTo(0, 0);
   currentHash = location.hash;
+  rememberPageIndex();
 
   const path = currentPath();
   for (const r of routes) {
@@ -70,6 +73,22 @@ export function render() {
     }
   }
   cleanup = notFound(app, {});
+}
+
+/** 履歴の1件ごとに「何ページ目か」を書いておく（戻ったときは書いてある番号に戻る） */
+function rememberPageIndex() {
+  const state = history.state as { noveruIndex?: number } | null;
+  if (typeof state?.noveruIndex === "number") {
+    pageIndex = state.noveruIndex;
+  } else {
+    pageIndex += 1;
+    history.replaceState({ ...(state ?? {}), noveruIndex: pageIndex }, "");
+  }
+}
+
+/** このアプリの中で、1つ前の画面に戻れるか */
+export function canGoBack(): boolean {
+  return pageIndex > 0;
 }
 
 export function startRouter() {

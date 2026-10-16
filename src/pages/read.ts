@@ -2,6 +2,7 @@
 
 import { displayTitle } from "../lib/cover";
 import { h } from "../lib/dom";
+import { backLink } from "../lib/backLink";
 import { createLikeButton } from "../lib/likeButton";
 import { createReader, type Reader } from "../lib/reader";
 import { store } from "../store";
@@ -39,9 +40,7 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
         h(
           "div",
           { class: "read-page-head" },
-          isMine
-            ? h("a", { href: "#/" }, "← 本棚へ")
-            : h("a", { href: `#/u/${encodeURIComponent(uid)}` }, "← 作者のページへ"),
+          backLink(isMine ? "/" : `/u/${encodeURIComponent(uid)}`),
           h(
             "div",
             { class: "read-page-actions" },
