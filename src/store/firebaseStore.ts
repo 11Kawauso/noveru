@@ -246,7 +246,7 @@ export class FirebaseStore implements Store {
       const snap = await getDocs(collection(this.db, "users", u.uid, "books"));
       const books = snap.docs.map((d) => toMeta(d.id, u.uid, d.data()));
       // 「探す」用の一覧と食い違いがあれば、うしろで直しておく
-      this.repairPublic(books).catch(() => {});
+      this.repairPublic(books).catch((e) => console.warn("「探す」用の一覧を直せませんでした", e));
       return books;
     });
   }
@@ -356,7 +356,7 @@ export class FirebaseStore implements Store {
       }
       batch.set(textRef, { body: input.body });
       await batch.commit();
-      if (bookId) await this.syncPublic(u.uid, bookId).catch(() => {});
+      if (bookId) await this.syncPublic(u.uid, bookId).catch((e) => console.warn("「探す」用の一覧を書き直せませんでした", e));
       return metaRef.id;
     });
   }
@@ -368,7 +368,7 @@ export class FirebaseStore implements Store {
         doc(this.db, "users", u.uid, "books", bookId),
         displayed ? { displayed, displayOrder: Date.now() } : { displayed, shelfOrder: -Date.now() },
       );
-      await this.syncPublic(u.uid, bookId).catch(() => {});
+      await this.syncPublic(u.uid, bookId).catch((e) => console.warn("「探す」用の一覧を書き直せませんでした", e));
     });
   }
 
@@ -376,7 +376,7 @@ export class FirebaseStore implements Store {
     return wrap(async () => {
       const u = this.requireUser();
       await updateDoc(doc(this.db, "users", u.uid, "books", bookId), { cover, updatedAt: serverTimestamp() });
-      await this.syncPublic(u.uid, bookId).catch(() => {});
+      await this.syncPublic(u.uid, bookId).catch((e) => console.warn("「探す」用の一覧を書き直せませんでした", e));
     });
   }
 
@@ -396,7 +396,7 @@ export class FirebaseStore implements Store {
       }
       // 本棚 ⇄ 公開中 を移った本だけ、「探す」用の一覧を直す
       for (const c of changes.filter((x) => x.moved)) {
-        await this.syncPublic(u.uid, c.id).catch(() => {});
+        await this.syncPublic(u.uid, c.id).catch((e) => console.warn("「探す」用の一覧を書き直せませんでした", e));
       }
     });
   }
