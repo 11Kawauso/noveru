@@ -6,7 +6,8 @@ import { backLink } from "../lib/backLink";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
-import { compressIcon } from "../lib/image";
+import { openIconCropper } from "../lib/iconCropper";
+import { withScrollThumb } from "../lib/scrollThumb";
 import type { BookMeta, Profile } from "../store";
 import { store, StoreError } from "../store";
 import { navigate } from "../router";
@@ -58,7 +59,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
         "div",
         { class: "account-info" },
         h("h1", { class: "account-name" }, name),
-        profile.bio ? h("p", { class: "account-bio" }, profile.bio) : null,
+        profile.bio ? withScrollThumb(h("p", { class: "account-bio" }, profile.bio), "account-bio-wrap") : null,
         isMine
           ? h(
               "div",
@@ -125,8 +126,11 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
       if (!file) return;
       error.textContent = "";
       try {
-        draftIcon = await compressIcon(file);
-        drawIcon();
+        const cropped = await openIconCropper(file);
+        if (cropped) {
+          draftIcon = cropped;
+          drawIcon();
+        }
       } catch (e) {
         error.textContent = e instanceof Error ? e.message : "画像を読み込めませんでした。";
       }
@@ -182,7 +186,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
           ),
         ),
         h("label", { class: "field" }, h("span", {}, "ペンネーム"), penName),
-        h("label", { class: "field" }, h("span", {}, "プロフィール"), bio, bioCount),
+        h("label", { class: "field" }, h("span", {}, "プロフィール"), withScrollThumb(bio, "bio-input-wrap"), bioCount),
         error,
         h("div", { class: "dialog-buttons" }, h("button", { class: "btn", onclick: () => close() }, "やめる"), saveBtn),
       ),

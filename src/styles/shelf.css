@@ -828,3 +828,95 @@ body.dragging-book * {
     font-size: 11px;
   }
 }
+
+
+/* ---- スクロールのつまみ（スクロールバーの代わり） ---- */
+
+.scroll-wrap {
+  position: relative;
+}
+
+.scroll-thumb {
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--muted);
+  opacity: 0.45;
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 0.15s;
+}
+
+.scroll-thumb:hover,
+.scroll-thumb.is-dragging {
+  opacity: 0.8;
+}
+
+/* 入力欄では枠の内側に出す */
+.bio-input-wrap .scroll-thumb {
+  right: 5px;
+}
+
+.account-bio-wrap {
+  /* 文の幅に合わせて、つまみが文のすぐ右に来るようにする */
+  width: fit-content;
+  max-width: 36em;
+}
+
+/* ---- アイコンの位置と大きさ ---- */
+
+.cropper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.cropper h2 {
+  align-self: flex-start;
+  margin-bottom: 0;
+}
+
+.crop-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.crop-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.crop-image {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+}
+
+/* 丸の外側を暗くする */
+.crop-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.crop-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+  color: var(--muted);
+}
+
+.crop-zoom {
+  flex: 1;
+  accent-color: var(--accent);
+}

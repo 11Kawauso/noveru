@@ -66,7 +66,9 @@ export function openDialog(content: HTMLElement, onClose?: () => void): () => vo
     onClose?.();
   };
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") close();
+    // 小窓が重なっているときは、一番上の小窓だけを閉じる
+    const top = Array.from(document.querySelectorAll(".dialog-backdrop")).pop();
+    if (e.key === "Escape" && top === backdrop) close();
   };
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) close();
