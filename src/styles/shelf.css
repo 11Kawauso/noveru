@@ -699,3 +699,128 @@ body.dragging-book * {
     justify-content: center;
   }
 }
+
+
+/* ---- 「書く」の作品一覧（横長の列で上から並べる） ---- */
+
+.works-sort-label {
+  margin-left: 12px;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.works-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.work-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.work-row:hover,
+.work-row:focus-visible {
+  border-color: var(--accent);
+  transform: translateX(3px);
+}
+
+.work-cover {
+  flex: none;
+  width: 52px;
+}
+
+.work-cover .cover-plain {
+  padding: 10% 8%;
+}
+
+.work-cover .cover-plain-title {
+  font-size: 9px;
+}
+
+.work-cover .cover-plain-author {
+  display: none;
+}
+
+.work-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.work-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.work-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.work-status {
+  margin-bottom: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.work-status.is-public {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.work-date {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .work-row {
+    gap: 12px;
+    padding: 10px 12px 10px 10px;
+  }
+
+  .work-cover {
+    width: 40px;
+  }
+
+  .work-title {
+    font-size: 16px;
+  }
+
+  .work-date {
+    font-size: 11px;
+  }
+}

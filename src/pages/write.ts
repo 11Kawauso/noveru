@@ -40,7 +40,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   const toolbar = h(
     "div",
     { class: "writer-toolbar" },
-    backLink("/", "btn btn-ghost"),
+    backLink("/write", "btn btn-ghost"),
     dirBadge,
     count,
     createZoomControl(),
@@ -345,7 +345,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
       h("h1", { class: "page-title" }, "どちらで書きますか？"),
       h("p", { class: "form-note" }, "書く向きは、あとから変えられません。"),
       h("div", { class: "dir-choices" }, choice(true), choice(false)),
-      h("a", { class: "btn btn-ghost", href: "#/" }, "やめる"),
+      h("a", { class: "btn btn-ghost", href: "#/write" }, "やめる"),
     );
     app.append(chooser);
   }

@@ -12,6 +12,7 @@ import { myPage } from "./pages/mypage";
 import { notFoundPage } from "./pages/notfound";
 import { publicPage } from "./pages/public";
 import { readPage } from "./pages/read";
+import { worksPage } from "./pages/works";
 import { writePage } from "./pages/write";
 import { addRoute, navigate, setNotFound, startRouter } from "./router";
 import { renderSidebar } from "./sidebar";
@@ -19,6 +20,7 @@ import { store } from "./store";
 
 addRoute("/", myPage);
 addRoute("/login", loginPage);
+addRoute("/write", worksPage);
 addRoute("/write/new", writePage);
 addRoute("/write/:id", writePage);
 addRoute("/read/:uid/:id", readPage);

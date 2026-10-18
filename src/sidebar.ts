@@ -68,7 +68,7 @@ export function renderSidebar(user: User | null) {
   const items: (HTMLElement | null)[] = [
     h("a", { class: "rail-logo", href: "#/", title: "noveru" }, "noveru"),
     user ? railLink("#/", "shelf", "本棚", "shelf") : null,
-    user ? railLink("#/write/new", "pen", "書く", "write") : null,
+    user ? railLink("#/write", "pen", "書く", "write") : null,
     user ? railLink("#/likes", "heart", "いいね", "likes") : null,
     user ? railLink("#/history", "clock", "履歴", "history") : null,
     h("div", { class: "rail-spacer" }),
