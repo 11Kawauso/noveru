@@ -541,3 +541,12 @@ main {
     display: inline-flex !important;
   }
 }
+
+/* ログイン画面では左のメニューを出さない */
+body.no-rail .side-rail {
+  display: none;
+}
+
+body.no-rail .page-area {
+  margin-left: 0;
+}

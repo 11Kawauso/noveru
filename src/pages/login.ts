@@ -12,6 +12,9 @@ export function loginPage(app: HTMLElement) {
     return;
   }
 
+  // ログイン画面では左のメニューを出さない
+  document.body.classList.add("no-rail");
+
   let mode: Mode = "login";
   const box = h("div", { class: "login-box" });
   app.append(
@@ -118,4 +121,6 @@ export function loginPage(app: HTMLElement) {
   };
 
   draw();
+
+  return () => document.body.classList.remove("no-rail");
 }
