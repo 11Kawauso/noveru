@@ -26,6 +26,8 @@ export interface BookMeta {
   titleReading: string;
   author: string;
   vertical: boolean;
+  /** タグ（「#」なし） */
+  tags: string[];
   /** true なら本棚から出して表紙を向けて並べている */
   displayed: boolean;
   /** 公開中に並べた順番（小さいほど先） */
@@ -47,6 +49,7 @@ export interface Book extends BookMeta {
 export interface BookInput {
   title: string;
   titleReading: string;
+  tags: string[];
   author: string;
   body: string;
   vertical: boolean;
@@ -74,6 +77,8 @@ export interface Store {
   listMyBooks(): Promise<BookMeta[]>;
   /** ある人が並べている本だけ（公開ページ用） */
   listDisplayedBooks(uid: string): Promise<BookMeta[]>;
+  /** 「探す」用：みんなの公開中の作品（新しく更新された順）。表紙は小さい画像 */
+  listPublicBooks(): Promise<BookMeta[]>;
   getBook(uid: string, bookId: string): Promise<Book | null>;
 
   /** 新しい本なら id を省略。保存した本の id を返す */
@@ -118,6 +123,8 @@ export interface BookPlacement {
   displayed: boolean;
   /** displayed が true なら公開中での順番、false なら本棚での順番 */
   order: number;
+  /** 本棚 ⇄ 公開中 を移ったとき true */
+  moved?: boolean;
 }
 
 /** 画面に出すためのエラー（メッセージは日本語） */

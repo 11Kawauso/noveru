@@ -24,7 +24,8 @@ service cloud.firestore {
         && d.vertical is bool
         && d.displayed is bool
         && d.displayOrder is number
-        && (d.cover == null || (d.cover is string && d.cover.size() <= 300000));
+        && (d.cover == null || (d.cover is string && d.cover.size() <= 300000))
+        && (!('tags' in d) || (d.tags is list && d.tags.size() <= 10));
     }
 
     // ペンネーム・プロフィール・アイコン（誰でも見られる）
@@ -60,6 +61,20 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == likerId
         && (isOwner(uid) || isDisplayed(uid, bookId));
       allow delete: if request.auth != null && (request.auth.uid == likerId || isOwner(uid));
+    }
+
+    // 「探す」用の公開中の作品の一覧（誰でも読める。書けるのはその本の持ち主だけ）
+    match /public/{id} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.ownerId == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.bookId
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.author is string && request.resource.data.author.size() <= 60
+        && request.resource.data.tags is list && request.resource.data.tags.size() <= 10
+        && (request.resource.data.cover == null
+            || (request.resource.data.cover is string && request.resource.data.cover.size() <= 100000));
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
 
     // 自分がいいねした本・閲覧履歴（本人だけ）

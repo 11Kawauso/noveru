@@ -5,6 +5,7 @@ import { h } from "../lib/dom";
 import { backLink } from "../lib/backLink";
 import { createLikeButton } from "../lib/likeButton";
 import { createReader, type Reader } from "../lib/reader";
+import { renderTagChips } from "../lib/tags";
 import { store } from "../store";
 
 export function readPage(app: HTMLElement, params: Record<string, string>) {
@@ -48,6 +49,7 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
             isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "編集") : null,
           ),
         ),
+        renderTagChips(book.tags) ?? "",
         reader.el,
       );
     });

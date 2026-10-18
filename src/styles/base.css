@@ -473,8 +473,14 @@ main {
   }
 
   /* スマホでは、ログアウトの代わりにアカウント（アイコン）を出す。ログアウトはアカウントページにある */
-  .rail-logout {
+  .rail-logout,
+  .rail-theme,
+  .rail-spacer {
     display: none;
+  }
+
+  .rail-user {
+    margin-left: auto;
   }
 
   .rail-user-name {

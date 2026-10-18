@@ -6,6 +6,7 @@ import { backLink } from "../lib/backLink";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
+import { getTheme, toggleTheme } from "../lib/theme";
 import { openIconCropper } from "../lib/iconCropper";
 import { withScrollThumb } from "../lib/scrollThumb";
 import type { BookMeta, Profile } from "../store";
@@ -80,7 +81,18 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
                 },
                 "URLをコピー",
               ),
-              // スマホでは上のメニューにログアウトがないので、ここに出す
+              // スマホでは上のメニューに色合いの切り替えとログアウトがないので、ここに出す
+              (() => {
+                const btn: HTMLButtonElement = h("button", {
+                  class: "btn btn-ghost mobile-only",
+                  onclick: () => {
+                    toggleTheme();
+                    btn.textContent = getTheme() === "dark" ? "明るくする" : "暗くする";
+                  },
+                });
+                btn.textContent = getTheme() === "dark" ? "明るくする" : "暗くする";
+                return btn;
+              })(),
               h(
                 "button",
                 {

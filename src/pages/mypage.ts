@@ -152,7 +152,7 @@ export function myPage(app: HTMLElement) {
         if (!b) return;
         const current = displayed ? b.displayOrder : b.shelfOrder;
         if (b.displayed === displayed && current === order) return;
-        changes.push({ id, displayed, order });
+        changes.push({ id, displayed, order, moved: b.displayed !== displayed });
         b.displayed = displayed;
         if (displayed) b.displayOrder = order;
         else b.shelfOrder = order;

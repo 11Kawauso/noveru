@@ -7,6 +7,8 @@
 //   users/{uid}/books/{bookId}/likes/{likerUid} … その本へのいいね（数は誰でも見られる）
 //   users/{uid}/liked/{ownerId_bookId}          … 自分がいいねした本（本人だけ）
 //   users/{uid}/history/{ownerId_bookId}        … 閲覧履歴（本人だけ）
+//   public/{ownerId_bookId}                     … 「探す」用の公開中の作品の一覧（小さい表紙つき・誰でも読める）
+//     公開・非公開・保存・表紙の変更・削除のたびに、持ち主が書き直す。
 // 本文を分けているのは、本棚を表示するときに全部の本文を読み込まないため。
 
 import { initializeApp } from "firebase/app";
@@ -22,6 +24,7 @@ import {
 } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getCountFromServer,
@@ -51,6 +54,7 @@ import type {
   User,
 } from "./types";
 import { StoreError } from "./types";
+import { makeThumbnail } from "../lib/image";
 
 type FirebaseConfig = Record<string, string>;
 
@@ -96,6 +100,7 @@ function toMeta(id: string, ownerId: string, d: DocumentData): BookMeta {
     ownerId,
     title: d.title ?? "",
     titleReading: d.titleReading ?? "",
+    tags: Array.isArray(d.tags) ? d.tags : [],
     author: d.author ?? "",
     vertical: d.vertical ?? true,
     displayed: d.displayed ?? false,
@@ -239,8 +244,65 @@ export class FirebaseStore implements Store {
     return wrap(async () => {
       const u = this.requireUser();
       const snap = await getDocs(collection(this.db, "users", u.uid, "books"));
-      return snap.docs.map((d) => toMeta(d.id, u.uid, d.data()));
+      const books = snap.docs.map((d) => toMeta(d.id, u.uid, d.data()));
+      // 「探す」用の一覧と食い違いがあれば、うしろで直しておく
+      this.repairPublic(books).catch(() => {});
+      return books;
     });
+  }
+
+  listPublicBooks() {
+    return wrap(async () => {
+      const snap = await getDocs(query(collection(this.db, "public"), orderBy("updatedAt", "desc"), limit(300)));
+      return snap.docs.map((d) => {
+        const data = d.data();
+        return { ...toMeta(data.bookId, data.ownerId, data), displayed: true };
+      });
+    });
+  }
+
+  // ---- 「探す」用の一覧（public）を、自分の本に合わせる ----
+
+  private publicRef(uid: string, bookId: string) {
+    return doc(this.db, "public", `${uid}_${bookId}`);
+  }
+
+  /** 1冊分を、本の今の状態に合わせて書き直す（公開中でなければ消す） */
+  private async syncPublic(uid: string, bookId: string) {
+    const snap = await getDoc(doc(this.db, "users", uid, "books", bookId));
+    const ref = this.publicRef(uid, bookId);
+    if (!snap.exists() || !snap.data().displayed) {
+      await deleteDoc(ref).catch(() => {});
+      return;
+    }
+    const d = snap.data();
+    const thumb = d.cover ? await makeThumbnail(d.cover).catch(() => null) : null;
+    await setDoc(ref, {
+      ownerId: uid,
+      bookId,
+      title: d.title ?? "",
+      titleReading: d.titleReading ?? "",
+      author: d.author ?? "",
+      vertical: d.vertical ?? true,
+      tags: Array.isArray(d.tags) ? d.tags : [],
+      cover: thumb,
+      createdAt: d.createdAt ?? serverTimestamp(),
+      updatedAt: d.updatedAt ?? serverTimestamp(),
+    });
+  }
+
+  /** 公開中なのに一覧にない本・一覧にあるのに公開していない本を直す */
+  private async repairPublic(books: BookMeta[]) {
+    const u = this.requireUser();
+    const snap = await getDocs(query(collection(this.db, "public"), where("ownerId", "==", u.uid)));
+    const listed = new Set(snap.docs.map((d) => d.data().bookId as string));
+    for (const b of books) {
+      if (b.displayed && !listed.has(b.id)) await this.syncPublic(u.uid, b.id);
+    }
+    for (const d of snap.docs) {
+      const b = books.find((x) => x.id === d.data().bookId);
+      if (!b || !b.displayed) await deleteDoc(d.ref).catch(() => {});
+    }
   }
 
   listDisplayedBooks(uid: string) {
@@ -275,6 +337,7 @@ export class FirebaseStore implements Store {
       const meta = {
         title: input.title,
         titleReading: input.titleReading,
+        tags: input.tags,
         author: input.author,
         vertical: input.vertical,
         cover: input.cover,
@@ -293,6 +356,7 @@ export class FirebaseStore implements Store {
       }
       batch.set(textRef, { body: input.body });
       await batch.commit();
+      if (bookId) await this.syncPublic(u.uid, bookId).catch(() => {});
       return metaRef.id;
     });
   }
@@ -304,6 +368,7 @@ export class FirebaseStore implements Store {
         doc(this.db, "users", u.uid, "books", bookId),
         displayed ? { displayed, displayOrder: Date.now() } : { displayed, shelfOrder: -Date.now() },
       );
+      await this.syncPublic(u.uid, bookId).catch(() => {});
     });
   }
 
@@ -311,6 +376,7 @@ export class FirebaseStore implements Store {
     return wrap(async () => {
       const u = this.requireUser();
       await updateDoc(doc(this.db, "users", u.uid, "books", bookId), { cover, updatedAt: serverTimestamp() });
+      await this.syncPublic(u.uid, bookId).catch(() => {});
     });
   }
 
@@ -328,6 +394,10 @@ export class FirebaseStore implements Store {
         }
         await batch.commit();
       }
+      // 本棚 ⇄ 公開中 を移った本だけ、「探す」用の一覧を直す
+      for (const c of changes.filter((x) => x.moved)) {
+        await this.syncPublic(u.uid, c.id).catch(() => {});
+      }
     });
   }
 
@@ -340,6 +410,7 @@ export class FirebaseStore implements Store {
       batch.delete(doc(this.db, "users", u.uid, "texts", bookId));
       batch.delete(doc(this.db, "users", u.uid, "books", bookId));
       await batch.commit();
+      await deleteDoc(this.publicRef(u.uid, bookId)).catch(() => {});
     });
   }
 

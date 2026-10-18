@@ -46,7 +46,7 @@ function makeId(): string {
 
 function meta(b: Book): BookMeta {
   const { body: _body, ...rest } = b;
-  return { ...rest, titleReading: rest.titleReading ?? "", shelfOrder: rest.shelfOrder ?? -rest.updatedAt, createdAt: rest.createdAt ?? rest.updatedAt };
+  return { ...rest, tags: rest.tags ?? [], titleReading: rest.titleReading ?? "", shelfOrder: rest.shelfOrder ?? -rest.updatedAt, createdAt: rest.createdAt ?? rest.updatedAt };
 }
 
 export class DemoStore implements Store {
@@ -136,6 +136,13 @@ export class DemoStore implements Store {
     return this.data.books
       .filter((b) => b.ownerId === uid && b.displayed)
       .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map(meta);
+  }
+
+  async listPublicBooks() {
+    return this.data.books
+      .filter((b) => b.displayed)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
       .map(meta);
   }
 

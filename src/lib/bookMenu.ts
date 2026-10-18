@@ -7,6 +7,7 @@ import { displayTitle, renderCover } from "./cover";
 import { confirmDialog, h, openDialog, toast } from "./dom";
 import { compressCover } from "./image";
 import { createLikeButton } from "./likeButton";
+import { renderTagChips } from "./tags";
 
 export interface BookMenuOptions {
   /** 公開・削除・表紙の変更などのあとに呼ばれる（画面を読み込み直す） */
@@ -83,6 +84,7 @@ export function openBookMenu(b: BookMeta, opts: BookMenuOptions) {
         { class: "book-menu-body" },
         h("h2", {}, displayTitle(b)),
         b.author ? h("p", { class: "book-menu-author" }, b.author) : null,
+        renderTagChips(b.tags),
         h("div", { class: "book-menu-like" }, createLikeButton(b.ownerId, b.id)),
         h("div", { class: "book-menu-actions" }, ...buttons),
       ),

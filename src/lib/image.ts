@@ -46,3 +46,18 @@ export async function compressCover(file: File): Promise<string> {
   }
   throw new Error("画像が大きすぎて小さくできませんでした。別の画像を選んでください。");
 }
+
+const THUMB_W = 180;
+
+/** 「探す」用の小さい表紙を作る（data URL → 小さい data URL） */
+export async function makeThumbnail(dataUrl: string): Promise<string> {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const scale = Math.min(1, THUMB_W / img.naturalWidth);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.72);
+}

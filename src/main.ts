@@ -7,6 +7,7 @@ import "./styles/editor.css";
 import "./styles/reader.css";
 
 import { historyPage, likesPage } from "./pages/bookList";
+import { explorePage } from "./pages/explore";
 import { loginPage } from "./pages/login";
 import { myPage } from "./pages/mypage";
 import { notFoundPage } from "./pages/notfound";
@@ -25,6 +26,8 @@ addRoute("/write/new", writePage);
 addRoute("/write/:id", writePage);
 addRoute("/read/:uid/:id", readPage);
 addRoute("/u/:uid", publicPage);
+addRoute("/explore", explorePage);
+addRoute("/explore/:q", explorePage);
 addRoute("/likes", likesPage);
 addRoute("/history", historyPage);
 setNotFound(notFoundPage);
