@@ -58,6 +58,9 @@ import { makeThumbnail } from "../lib/image";
 
 type FirebaseConfig = Record<string, string>;
 
+/** 「探す」用の小さい表紙の作り方の版 */
+const THUMB_VERSION = 2;
+
 const AUTH_MESSAGES: Record<string, string> = {
   "auth/invalid-email": "メールアドレスの形が正しくありません。",
   "auth/missing-email": "メールアドレスを入力してください。",
@@ -253,7 +256,7 @@ export class FirebaseStore implements Store {
 
   listPublicBooks() {
     return wrap(async () => {
-      const snap = await getDocs(query(collection(this.db, "public"), orderBy("updatedAt", "desc"), limit(300)));
+      const snap = await getDocs(query(collection(this.db, "public"), orderBy("updatedAt", "desc"), limit(150)));
       return snap.docs.map((d) => {
         const data = d.data();
         return { ...toMeta(data.bookId, data.ownerId, data), displayed: true };
@@ -286,6 +289,8 @@ export class FirebaseStore implements Store {
       vertical: d.vertical ?? true,
       tags: Array.isArray(d.tags) ? d.tags : [],
       cover: thumb,
+      // 小さい表紙の作り方の版。作り方を変えたら上げると、本棚を開いたときに作り直される
+      thumbVersion: THUMB_VERSION,
       createdAt: d.createdAt ?? serverTimestamp(),
       updatedAt: d.updatedAt ?? serverTimestamp(),
     });
@@ -295,7 +300,10 @@ export class FirebaseStore implements Store {
   private async repairPublic(books: BookMeta[]) {
     const u = this.requireUser();
     const snap = await getDocs(query(collection(this.db, "public"), where("ownerId", "==", u.uid)));
-    const listed = new Set(snap.docs.map((d) => d.data().bookId as string));
+    // 古い作り方の小さい表紙のものは、一覧にないものとして作り直す
+    const listed = new Set(
+      snap.docs.filter((d) => d.data().thumbVersion === THUMB_VERSION).map((d) => d.data().bookId as string),
+    );
     for (const b of books) {
       if (b.displayed && !listed.has(b.id)) await this.syncPublic(u.uid, b.id);
     }

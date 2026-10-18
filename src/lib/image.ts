@@ -47,7 +47,9 @@ export async function compressCover(file: File): Promise<string> {
   throw new Error("画像が大きすぎて小さくできませんでした。別の画像を選んでください。");
 }
 
-const THUMB_W = 180;
+// 「探す」の表紙は画面で約240px幅（高解像度の画面では約480px）で出るので、それに足りる大きさにする
+const THUMB_W = 480;
+const THUMB_MAX_LENGTH = 95_000; // Firestore のルールの上限（10万文字）より少し小さく
 
 /** 「探す」用の小さい表紙を作る（data URL → 小さい data URL） */
 export async function makeThumbnail(dataUrl: string): Promise<string> {
@@ -58,6 +60,13 @@ export async function makeThumbnail(dataUrl: string): Promise<string> {
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.72);
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  let url = "";
+  for (const quality of [0.85, 0.78, 0.7, 0.6, 0.5]) {
+    url = canvas.toDataURL("image/jpeg", quality);
+    if (url.length <= THUMB_MAX_LENGTH) return url;
+  }
+  return url;
 }
