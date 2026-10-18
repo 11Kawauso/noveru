@@ -673,6 +673,8 @@ body.dragging-book * {
 
 .bio-input {
   /* 枠の大きさは固定。長いときは中でスクロールする */
+  display: block;
+  width: 100%;
   height: calc(1.6em * 5 + 20px);
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -857,6 +859,11 @@ body.dragging-book * {
 /* 入力欄では枠の内側に出す */
 .bio-input-wrap .scroll-thumb {
   right: 5px;
+}
+
+/* つまみが文字に重ならないように、右側に少し余白を取る */
+.bio-input-wrap .bio-input {
+  padding-right: 18px;
 }
 
 .account-bio-wrap {
