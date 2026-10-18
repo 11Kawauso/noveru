@@ -40,7 +40,7 @@ function parseQuery(text: string): SearchQuery {
 function matches(b: BookMeta, q: SearchQuery): boolean {
   const tags = b.tags.map(fold);
   if (!q.tags.every((t) => tags.includes(t))) return false;
-  const text = fold(`${b.title} ${b.titleReading} ${b.author}`);
+  const text = fold(`${b.title} ${b.titleReading} ${b.author} ${b.synopsis}`);
   return q.words.every((w) => text.includes(w));
 }
 
@@ -55,7 +55,7 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
     class: "search-input",
     type: "search",
     value: params.q ?? "",
-    placeholder: "作品名、または #タグ で探す",
+    placeholder: "作品名・あらすじの言葉、または #タグ で探す",
     "aria-label": "作品を探す",
     autocomplete: "off",
   });

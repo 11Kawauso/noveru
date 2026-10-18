@@ -104,6 +104,7 @@ function toMeta(id: string, ownerId: string, d: DocumentData): BookMeta {
     title: d.title ?? "",
     titleReading: d.titleReading ?? "",
     tags: Array.isArray(d.tags) ? d.tags : [],
+    synopsis: d.synopsis ?? "",
     author: d.author ?? "",
     vertical: d.vertical ?? true,
     displayed: d.displayed ?? false,
@@ -288,6 +289,7 @@ export class FirebaseStore implements Store {
       author: d.author ?? "",
       vertical: d.vertical ?? true,
       tags: Array.isArray(d.tags) ? d.tags : [],
+      synopsis: d.synopsis ?? "",
       cover: thumb,
       // 小さい表紙の作り方の版。作り方を変えたら上げると、本棚を開いたときに作り直される
       thumbVersion: THUMB_VERSION,
@@ -346,6 +348,7 @@ export class FirebaseStore implements Store {
         title: input.title,
         titleReading: input.titleReading,
         tags: input.tags,
+        synopsis: input.synopsis,
         author: input.author,
         vertical: input.vertical,
         cover: input.cover,

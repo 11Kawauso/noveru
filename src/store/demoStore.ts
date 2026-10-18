@@ -46,7 +46,7 @@ function makeId(): string {
 
 function meta(b: Book): BookMeta {
   const { body: _body, ...rest } = b;
-  return { ...rest, tags: rest.tags ?? [], titleReading: rest.titleReading ?? "", shelfOrder: rest.shelfOrder ?? -rest.updatedAt, createdAt: rest.createdAt ?? rest.updatedAt };
+  return { ...rest, tags: rest.tags ?? [], synopsis: rest.synopsis ?? "", titleReading: rest.titleReading ?? "", shelfOrder: rest.shelfOrder ?? -rest.updatedAt, createdAt: rest.createdAt ?? rest.updatedAt };
 }
 
 export class DemoStore implements Store {

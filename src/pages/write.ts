@@ -5,7 +5,10 @@ import { h, openDialog, toast } from "../lib/dom";
 import { backLink } from "../lib/backLink";
 import { compressCover } from "../lib/image";
 import { createReader } from "../lib/reader";
+import { withScrollThumb } from "../lib/scrollThumb";
 import { MAX_TAGS, parseTags, renderTagChips, tagsToText } from "../lib/tags";
+
+const MAX_SYNOPSIS = 300;
 import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
 import { navigate, replacePath, setLeaveGuard } from "../router";
 import { store, StoreError, type BookInput, type BookMeta } from "../store";
@@ -25,6 +28,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   let cover: string | null = null;
   let titleReading = "";
   let tags: string[] = [];
+  let synopsis = "";
   let saved = ""; // 最後に保存した内容（変更があるか調べるため）
   let saving = false;
   let started = false; // 紙を出して書き始めたか（新しい本は向きを選んでから）
@@ -55,12 +59,14 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   const writer = h("div", { class: "writer", hidden: !bookId }, toolbar, scroller);
   app.append(writer);
 
-  const snapshot = () => JSON.stringify([title.value, titleReading, tags, author.value, body.value, vertical, cover]);
+  const snapshot = () =>
+    JSON.stringify([title.value, titleReading, tags, synopsis, author.value, body.value, vertical, cover]);
   const isClean = () => !started || snapshot() === saved;
   const input = (): BookInput => ({
     title: title.value.trim(),
     titleReading: titleReading.trim(),
     tags,
+    synopsis: synopsis.trim(),
     author: author.value.trim(),
     body: body.value,
     vertical,
@@ -152,6 +158,12 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     const drawTags = () => tagsPreview.replaceChildren(renderTagChips(parseTags(tagsInput.value), false) ?? "");
     tagsInput.addEventListener("input", drawTags);
     drawTags();
+    const synopsisInput = h("textarea", { class: "synopsis-input", maxlength: MAX_SYNOPSIS, rows: 4 });
+    synopsisInput.value = synopsis;
+    const synopsisCount = h("small", { class: "form-note" });
+    const drawSynopsisCount = () => (synopsisCount.textContent = `${synopsisInput.value.length} / ${MAX_SYNOPSIS}字`);
+    synopsisInput.addEventListener("input", drawSynopsisCount);
+    drawSynopsisCount();
     const readingInput = h("input", {
       type: "text",
       value: titleReading,
@@ -171,6 +183,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         title: title.value,
         titleReading: readingInput.value,
         tags: [],
+        synopsis: "",
         author: author.value,
         vertical,
         displayed: false,
@@ -209,6 +222,8 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           const prevCover = cover;
           const prevReading = titleReading;
           const prevTags = tags;
+          const prevSynopsis = synopsis;
+          synopsis = synopsisInput.value.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
           cover = draftCover;
           titleReading = readingInput.value;
           tags = parseTags(tagsInput.value);
@@ -220,6 +235,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
             cover = prevCover;
             titleReading = prevReading;
             tags = prevTags;
+            synopsis = prevSynopsis;
           }
         },
       },
@@ -245,6 +261,13 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           tagsInput,
           tagsPreview,
           h("small", { class: "form-note" }, "空白で区切って書きます。「探す」でタグから作品を見つけてもらえます。"),
+        ),
+        h(
+          "label",
+          { class: "field save-reading" },
+          h("span", {}, "あらすじ"),
+          withScrollThumb(synopsisInput, "bio-input-wrap"),
+          synopsisCount,
         ),
         h(
           "div",
@@ -315,6 +338,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     title: string;
     titleReading: string;
     tags: string[];
+    synopsis: string;
     author: string;
     body: string;
     vertical: boolean;
@@ -323,6 +347,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     title.value = data.title;
     titleReading = data.titleReading;
     tags = data.tags;
+    synopsis = data.synopsis;
     author.value = data.author;
     body.value = data.body;
     cover = data.cover;
@@ -359,7 +384,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           class: "dir-choice",
           onclick: () => {
             chooser.remove();
-            start({ title: "", titleReading: "", tags: [], author: user.penName, body: "", vertical: v, cover: null });
+            start({ title: "", titleReading: "", tags: [], synopsis: "", author: user.penName, body: "", vertical: v, cover: null });
           },
         },
         h("div", { class: `dir-sample ${v ? "is-vertical" : "is-horizontal"}`, "aria-hidden": "true" }),

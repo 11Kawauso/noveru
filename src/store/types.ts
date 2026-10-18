@@ -28,6 +28,8 @@ export interface BookMeta {
   vertical: boolean;
   /** タグ（「#」なし） */
   tags: string[];
+  /** あらすじ（300字まで） */
+  synopsis: string;
   /** true なら本棚から出して表紙を向けて並べている */
   displayed: boolean;
   /** 公開中に並べた順番（小さいほど先） */
@@ -50,6 +52,7 @@ export interface BookInput {
   title: string;
   titleReading: string;
   tags: string[];
+  synopsis: string;
   author: string;
   body: string;
   vertical: boolean;

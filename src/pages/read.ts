@@ -5,6 +5,7 @@ import { h } from "../lib/dom";
 import { backLink } from "../lib/backLink";
 import { createLikeButton } from "../lib/likeButton";
 import { createReader, type Reader } from "../lib/reader";
+import { withScrollThumb } from "../lib/scrollThumb";
 import { renderTagChips } from "../lib/tags";
 import { store } from "../store";
 
@@ -50,6 +51,12 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
           ),
         ),
         renderTagChips(book.tags) ?? "",
+        book.synopsis
+          ? withScrollThumb(
+              h("div", { class: "read-synopsis" }, h("span", { class: "read-synopsis-label" }, "あらすじ"), book.synopsis),
+              "read-synopsis-wrap",
+            )
+          : "",
         reader.el,
       );
     });

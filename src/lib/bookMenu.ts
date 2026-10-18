@@ -7,6 +7,7 @@ import { displayTitle, renderCover } from "./cover";
 import { confirmDialog, h, openDialog, toast } from "./dom";
 import { compressCover } from "./image";
 import { createLikeButton } from "./likeButton";
+import { withScrollThumb } from "./scrollThumb";
 import { renderTagChips } from "./tags";
 
 export interface BookMenuOptions {
@@ -85,6 +86,7 @@ export function openBookMenu(b: BookMeta, opts: BookMenuOptions) {
         h("h2", {}, displayTitle(b)),
         b.author ? h("p", { class: "book-menu-author" }, b.author) : null,
         renderTagChips(b.tags),
+        b.synopsis ? withScrollThumb(h("p", { class: "synopsis-text" }, b.synopsis), "synopsis-wrap") : null,
         h("div", { class: "book-menu-like" }, createLikeButton(b.ownerId, b.id)),
         h("div", { class: "book-menu-actions" }, ...buttons),
       ),

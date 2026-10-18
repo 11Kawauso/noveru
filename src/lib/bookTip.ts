@@ -56,6 +56,7 @@ export function enableBookTips(root: HTMLElement, findBook: (id: string) => Book
           h("div", { class: "book-tip-title" }, displayTitle(book)),
           h("div", { class: "book-tip-author" }, book.author || "作者なし"),
           h("div", { class: "book-tip-date" }, `制作日 ${formatDate(book.createdAt)}`),
+          book.synopsis ? h("div", { class: "book-tip-synopsis" }, book.synopsis) : null,
         ),
       );
       tip.hidden = false;

@@ -1012,3 +1012,87 @@ a.tag-chip:hover,
   color: var(--muted);
   font-size: 12px;
 }
+
+
+/* ---- あらすじ ---- */
+
+.synopsis-input {
+  display: block;
+  width: 100%;
+  height: calc(1.6em * 4 + 20px);
+  padding: 10px 18px 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.synopsis-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* 本のメニューの中 */
+.synopsis-wrap {
+  margin-top: 12px;
+}
+
+.synopsis-text {
+  max-height: calc(1.6em * 5);
+  margin: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.synopsis-wrap .scroll-thumb {
+  right: -8px;
+}
+
+/* 読む画面 */
+.read-synopsis-wrap {
+  max-width: 600px;
+  margin: 0 auto 16px;
+}
+
+.read-synopsis {
+  max-height: calc(1.7em * 4 + 24px);
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--paper);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.read-synopsis-wrap .scroll-thumb {
+  right: 6px;
+}
+
+.read-synopsis-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* マウスを合わせたときの小窓（3行まで） */
+.book-tip-synopsis {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

@@ -25,7 +25,8 @@ service cloud.firestore {
         && d.displayed is bool
         && d.displayOrder is number
         && (d.cover == null || (d.cover is string && d.cover.size() <= 300000))
-        && (!('tags' in d) || (d.tags is list && d.tags.size() <= 10));
+        && (!('tags' in d) || (d.tags is list && d.tags.size() <= 10))
+        && (!('synopsis' in d) || (d.synopsis is string && d.synopsis.size() <= 300));
     }
 
     // ペンネーム・プロフィール・アイコン（誰でも見られる）
@@ -72,6 +73,8 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() <= 100
         && request.resource.data.author is string && request.resource.data.author.size() <= 60
         && request.resource.data.tags is list && request.resource.data.tags.size() <= 10
+        && (!('synopsis' in request.resource.data)
+            || (request.resource.data.synopsis is string && request.resource.data.synopsis.size() <= 300))
         && (request.resource.data.cover == null
             || (request.resource.data.cover is string && request.resource.data.cover.size() <= 100000));
       allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
