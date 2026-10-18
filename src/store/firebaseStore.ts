@@ -307,6 +307,13 @@ export class FirebaseStore implements Store {
     });
   }
 
+  updateCover(bookId: string, cover: string | null) {
+    return wrap(async () => {
+      const u = this.requireUser();
+      await updateDoc(doc(this.db, "users", u.uid, "books", bookId), { cover, updatedAt: serverTimestamp() });
+    });
+  }
+
   arrangeBooks(changes: BookPlacement[]) {
     return wrap(async () => {
       const u = this.requireUser();

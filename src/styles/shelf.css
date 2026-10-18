@@ -718,6 +718,10 @@ body.dragging-book * {
 }
 
 .work-row {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 18px;

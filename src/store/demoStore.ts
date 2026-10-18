@@ -181,6 +181,15 @@ export class DemoStore implements Store {
     this.save();
   }
 
+  async updateCover(bookId: string, cover: string | null) {
+    const u = this.requireUser();
+    const b = this.data.books.find((x) => x.ownerId === u.uid && x.id === bookId);
+    if (!b) throw new StoreError("本が見つかりません。");
+    b.cover = cover;
+    b.updatedAt = Date.now();
+    this.save();
+  }
+
   async arrangeBooks(changes: BookPlacement[]) {
     const u = this.requireUser();
     for (const c of changes) {

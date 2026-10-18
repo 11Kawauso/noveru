@@ -79,6 +79,8 @@ export interface Store {
   /** 新しい本なら id を省略。保存した本の id を返す */
   saveBook(input: BookInput, bookId?: string): Promise<string>;
   setDisplayed(bookId: string, displayed: boolean): Promise<void>;
+  /** 表紙だけを変える（null なら画像なしの表紙） */
+  updateCover(bookId: string, cover: string | null): Promise<void>;
   /** 本の置き場所（本棚／公開中）と順番をまとめて変える */
   arrangeBooks(changes: BookPlacement[]): Promise<void>;
   deleteBook(bookId: string): Promise<void>;

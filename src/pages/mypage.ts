@@ -1,10 +1,10 @@
 // マイページ：上に本棚、下に表紙を向けて並べた本
 
 import { enableBookDrag, type DropResult } from "../lib/bookDrag";
+import { openBookMenu as openBookMenu_ } from "../lib/bookMenu";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
-import { confirmDialog, h, openDialog, toast } from "../lib/dom";
-import { createLikeButton } from "../lib/likeButton";
+import { h, openDialog, toast } from "../lib/dom";
 import { openPopupMenu } from "../lib/popupMenu";
 import { navigate } from "../router";
 import { store, StoreError, type BookMeta, type BookPlacement } from "../store";
@@ -219,71 +219,7 @@ export function myPage(app: HTMLElement) {
     }
   };
 
-  const openBookMenu = (b: BookMeta) => {
-    const act = (label: string, fn: () => void | Promise<void>, cls = "btn") =>
-      h(
-        "button",
-        {
-          class: cls,
-          onclick: async () => {
-            close();
-            try {
-              await fn();
-            } catch (e) {
-              toast(e instanceof StoreError ? e.message : "うまくいきませんでした。");
-            }
-          },
-        },
-        label,
-      );
-
-    const close = openDialog(
-      h(
-        "div",
-        { class: "book-menu" },
-        h("div", { class: "book-menu-cover" }, renderCover(b)),
-        h(
-          "div",
-          { class: "book-menu-body" },
-          h("h2", {}, displayTitle(b)),
-          b.author ? h("p", { class: "book-menu-author" }, b.author) : null,
-          h("div", { class: "book-menu-like" }, createLikeButton(user.uid, b.id)),
-          h(
-            "div",
-            { class: "book-menu-actions" },
-            b.displayed
-              ? act("本棚に戻す（非公開）", async () => {
-                  await store.setDisplayed(b.id, false);
-                  await reload();
-                  toast("本棚に戻しました（非公開）。");
-                })
-              : act(
-                  "公開する",
-                  async () => {
-                    await store.setDisplayed(b.id, true);
-                    await reload();
-                    toast("公開しました。");
-                  },
-                  "btn btn-primary",
-                ),
-            act("読む", () => navigate(`/read/${encodeURIComponent(user.uid)}/${encodeURIComponent(b.id)}`)),
-            act("編集", () => navigate(`/write/${encodeURIComponent(b.id)}`)),
-            act(
-              "削除",
-              async () => {
-                const ok = await confirmDialog(`「${displayTitle(b)}」を削除しますか？\n削除すると元に戻せません。`, "削除する", true);
-                if (!ok) return;
-                await store.deleteBook(b.id);
-                await reload();
-                toast("削除しました。");
-              },
-              "btn btn-ghost btn-delete",
-            ),
-          ),
-        ),
-      ),
-    );
-  };
+  const openBookMenu = (b: BookMeta) => openBookMenu_(b, { onChanged: reload, primary: "publish" });
 
   shelfBooks.append(h("p", { class: "shelf-empty" }, "読み込み中…"));
   reload();

@@ -1,6 +1,7 @@
 // 「書く」の最初の画面：自分の作品（本棚の本も公開中の本も）を、横長の列で上から並べる
 // 押すとその作品の編集へ。右上の「作成」から新しい作品を書き始める。
 
+import { openBookMenu } from "../lib/bookMenu";
 import { displayTitle, renderCover } from "../lib/cover";
 import { h, toast } from "../lib/dom";
 import { openPopupMenu } from "../lib/popupMenu";
@@ -74,8 +75,8 @@ export function worksPage(app: HTMLElement) {
     list.replaceChildren(
       ...sorted.map((b) =>
         h(
-          "a",
-          { class: "work-row", href: `#/write/${encodeURIComponent(b.id)}` },
+          "button",
+          { class: "work-row", type: "button", onclick: () => openBookMenu(b, { onChanged: reload, primary: "edit" }) },
           h("div", { class: "work-cover" }, renderCover(b)),
           h(
             "div",
@@ -100,17 +101,19 @@ export function worksPage(app: HTMLElement) {
     );
   };
 
-  store
-    .listMyBooks()
-    .then((list) => {
-      if (left) return;
-      books = list;
-      draw();
-    })
-    .catch((e) => {
-      note.textContent = e instanceof StoreError ? e.message : "作品を読み込めませんでした。";
-      toast(note.textContent);
-    });
+  const reload = () =>
+    store
+      .listMyBooks()
+      .then((list) => {
+        if (left) return;
+        books = list;
+        draw();
+      })
+      .catch((e) => {
+        note.textContent = e instanceof StoreError ? e.message : "作品を読み込めませんでした。";
+        toast(note.textContent);
+      });
+  reload();
 
   return () => {
     left = true;
