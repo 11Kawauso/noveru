@@ -621,6 +621,7 @@ body.dragging-book * {
 }
 
 .account-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -867,8 +868,8 @@ body.dragging-book * {
 }
 
 .account-bio-wrap {
-  /* 文の幅に合わせて、つまみが文のすぐ右に来るようにする */
-  width: fit-content;
+  /* プロフィール欄の幅は決まった大きさにして、つまみは欄の右端に出す */
+  width: 100%;
   max-width: 36em;
 }
 
