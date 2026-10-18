@@ -472,8 +472,13 @@ main {
     font-size: 9.5px;
   }
 
-  .rail-user {
+  /* スマホでは、ログアウトの代わりにアカウント（アイコン）を出す。ログアウトはアカウントページにある */
+  .rail-logout {
     display: none;
+  }
+
+  .rail-user-name {
+    max-width: 52px;
   }
 
   .page-area {
@@ -524,4 +529,15 @@ main {
   font-size: 12px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* スマホのときだけ出すもの */
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .mobile-only {
+    display: inline-flex !important;
+  }
 }

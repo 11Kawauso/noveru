@@ -5,10 +5,11 @@ import { renderAvatar } from "../lib/avatar";
 import { backLink } from "../lib/backLink";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
-import { h, openDialog, toast } from "../lib/dom";
+import { confirmDialog, h, openDialog, toast } from "../lib/dom";
 import { compressIcon } from "../lib/image";
 import type { BookMeta, Profile } from "../store";
 import { store, StoreError } from "../store";
+import { navigate } from "../router";
 import { publicUrl } from "./mypage";
 
 const MAX_BIO = 200;
@@ -77,6 +78,19 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
                   },
                 },
                 "URLをコピー",
+              ),
+              // スマホでは上のメニューにログアウトがないので、ここに出す
+              h(
+                "button",
+                {
+                  class: "btn btn-ghost mobile-only",
+                  onclick: async () => {
+                    if (!(await confirmDialog("ログアウトしますか？", "ログアウト"))) return;
+                    await store.signOut();
+                    navigate("/login");
+                  },
+                },
+                "ログアウト",
               ),
             )
           : null,

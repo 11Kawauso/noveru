@@ -90,7 +90,7 @@ export function renderSidebar(user: User | null) {
       ? h(
           "button",
           {
-            class: "rail-item",
+            class: "rail-item rail-logout",
             onclick: async () => {
               if (!(await confirmDialog("ログアウトしますか？", "ログアウト"))) return;
               await store.signOut();

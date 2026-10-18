@@ -4,7 +4,7 @@ import { enableBookDrag, type DropResult } from "../lib/bookDrag";
 import { openBookMenu as openBookMenu_ } from "../lib/bookMenu";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, fitSpine, renderCover, renderSpine } from "../lib/cover";
-import { h, openDialog, toast } from "../lib/dom";
+import { h, toast } from "../lib/dom";
 import { openPopupMenu } from "../lib/popupMenu";
 import { navigate } from "../router";
 import { store, StoreError, type BookMeta, type BookPlacement } from "../store";
@@ -67,30 +67,6 @@ export function myPage(app: HTMLElement) {
         h(
           "div",
           { class: "toolbar-buttons" },
-          h(
-            "button",
-            {
-              class: "btn",
-              title: "アカウントページ（公開中の本が見られるページ）のURLをコピーします",
-              onclick: async () => {
-                try {
-                  await navigator.clipboard.writeText(publicUrl(user.uid));
-                  toast("アカウントページのURLをコピーしました。");
-                } catch {
-                  openDialog(
-                    h(
-                      "div",
-                      {},
-                      h("h2", {}, "アカウントページのURL"),
-                      h("input", { class: "url-box", readonly: true, value: publicUrl(user.uid) }),
-                    ),
-                  );
-                }
-              },
-            },
-            "URLをコピー",
-          ),
-          h("a", { class: "btn", href: `#/u/${encodeURIComponent(user.uid)}` }, "アカウントページ"),
           h("a", { class: "btn btn-primary", href: "#/write/new" }, "＋ 新しく書く"),
         ),
       ),
