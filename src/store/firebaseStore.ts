@@ -9,6 +9,7 @@
 //   users/{uid}/history/{ownerId_bookId}        … 閲覧履歴（本人だけ）
 //   public/{ownerId_bookId}                     … 「探す」用の公開中の作品の一覧（小さい表紙つき・誰でも読める）
 //     公開・非公開・保存・表紙の変更・削除のたびに、持ち主が書き直す。
+//     いいねの数（likeCount）は、いいねした人が ±1 する（並べ替え用。持ち主が本棚を開くと数え直す）。
 // 本文を分けているのは、本棚を表示するときに全部の本文を読み込まないため。
 
 import { initializeApp } from "firebase/app";
@@ -30,6 +31,7 @@ import {
   getCountFromServer,
   getDocs,
   getFirestore,
+  increment,
   limit,
   orderBy,
   query,
@@ -260,7 +262,7 @@ export class FirebaseStore implements Store {
       const snap = await getDocs(query(collection(this.db, "public"), orderBy("updatedAt", "desc"), limit(150)));
       return snap.docs.map((d) => {
         const data = d.data();
-        return { ...toMeta(data.bookId, data.ownerId, data), displayed: true };
+        return { ...toMeta(data.bookId, data.ownerId, data), displayed: true, likeCount: data.likeCount ?? 0 };
       });
     });
   }
@@ -280,7 +282,10 @@ export class FirebaseStore implements Store {
       return;
     }
     const d = snap.data();
-    const thumb = d.cover ? await makeThumbnail(d.cover).catch(() => null) : null;
+    const [thumb, likeCount] = await Promise.all([
+      d.cover ? makeThumbnail(d.cover).catch(() => null) : null,
+      this.countLikes(uid, bookId),
+    ]);
     await setDoc(ref, {
       ownerId: uid,
       bookId,
@@ -291,6 +296,7 @@ export class FirebaseStore implements Store {
       tags: Array.isArray(d.tags) ? d.tags : [],
       synopsis: d.synopsis ?? "",
       cover: thumb,
+      likeCount,
       // 小さい表紙の作り方の版。作り方を変えたら上げると、本棚を開いたときに作り直される
       thumbVersion: THUMB_VERSION,
       createdAt: d.createdAt ?? serverTimestamp(),
@@ -308,6 +314,13 @@ export class FirebaseStore implements Store {
     );
     for (const b of books) {
       if (b.displayed && !listed.has(b.id)) await this.syncPublic(u.uid, b.id);
+    }
+    // いいねの数がずれていたら直す（いいねした人の書き込みが失敗したときなど）
+    for (const d of snap.docs) {
+      const b = books.find((x) => x.id === d.data().bookId);
+      if (!b?.displayed || !listed.has(b.id)) continue;
+      const count = await this.countLikes(u.uid, b.id);
+      if (d.data().likeCount !== count) await updateDoc(d.ref, { likeCount: count });
     }
     for (const d of snap.docs) {
       const b = books.find((x) => x.id === d.data().bookId);
@@ -427,6 +440,11 @@ export class FirebaseStore implements Store {
 
   // ---- いいね ----
 
+  private async countLikes(ownerId: string, bookId: string): Promise<number> {
+    const snap = await getCountFromServer(collection(this.db, "users", ownerId, "books", bookId, "likes"));
+    return snap.data().count;
+  }
+
   getLikeInfo(ownerId: string, bookId: string) {
     return wrap(async (): Promise<LikeInfo> => {
       const likes = collection(this.db, "users", ownerId, "books", bookId, "likes");
@@ -443,15 +461,29 @@ export class FirebaseStore implements Store {
       const u = this.requireUser();
       const likeRef = doc(this.db, "users", ownerId, "books", bookId, "likes", u.uid);
       const myRef = doc(this.db, "users", u.uid, "liked", `${ownerId}_${bookId}`);
-      const batch = writeBatch(this.db);
-      if (liked) {
-        batch.set(likeRef, { likedAt: serverTimestamp() });
-        batch.set(myRef, { ownerId, bookId, likedAt: serverTimestamp() });
-      } else {
-        batch.delete(likeRef);
-        batch.delete(myRef);
+      const publicRef = this.publicRef(ownerId, bookId);
+      const listed = (await getDoc(publicRef).catch(() => null))?.exists() ?? false;
+      const commit = (withCount: boolean) => {
+        const batch = writeBatch(this.db);
+        if (liked) {
+          batch.set(likeRef, { likedAt: serverTimestamp() });
+          batch.set(myRef, { ownerId, bookId, likedAt: serverTimestamp() });
+        } else {
+          batch.delete(likeRef);
+          batch.delete(myRef);
+        }
+        // 「探す」用の一覧のいいねの数も、いっしょに ±1 する
+        if (withCount) batch.update(publicRef, { likeCount: increment(liked ? 1 : -1) });
+        return batch.commit();
+      };
+      try {
+        await commit(listed);
+      } catch (e) {
+        // 数を書けなくても、いいねはできるようにする（数は持ち主が本棚を開いたときに直る）
+        if (!listed) throw e;
+        console.warn("「探す」用の一覧のいいねの数を書けませんでした", e);
+        await commit(false);
       }
-      await batch.commit();
     });
   }
 

@@ -1,6 +1,7 @@
 // 「探す」：ほかの人の公開中の作品を、表紙で横3列に並べて探す
 //   作品名（や作者名・読み）をそのまま書くか、「#タグ」で探せる。両方まぜてもいい。
 //   作品を押すと、まず概要の小窓（あらすじ・いいね・「読む」）が出る。
+//   並べ方は「おすすめ（人気＋新しさ）」「新着」「人気」から選べる。最初はおすすめ。
 
 import { enableBookInfo, reopenBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
@@ -11,6 +12,40 @@ import { replacePath } from "../router";
 import { store, StoreError, type BookMeta } from "../store";
 
 const POPULAR_TAGS = 15;
+
+type SortKey = "recommended" | "new" | "popular";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "recommended", label: "おすすめ" },
+  { key: "new", label: "新着" },
+  { key: "popular", label: "人気" },
+];
+/** 履歴（history.state）に、選んでいる並べ方を書いておくときの名前（戻ったときに同じ並べ方にする） */
+const SORT_STATE_KEY = "noveruExploreSort";
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * おすすめの点数：いいねが多いほど高く、更新してから日が経つほど下がる。
+ *   新しい作品はいいねが0でも上のほうに出て、いいねの多い作品はしばらく上に残る。
+ */
+function recommendScore(b: BookMeta, now: number): number {
+  const days = Math.max(0, now - b.updatedAt) / DAY;
+  return ((b.likeCount ?? 0) + 1) / Math.pow(days + 2, 1.5);
+}
+
+function sortBooks(books: BookMeta[], key: SortKey): BookMeta[] {
+  const byNew = (a: BookMeta, b: BookMeta) => b.updatedAt - a.updatedAt;
+  if (key === "new") return [...books].sort(byNew);
+  if (key === "popular") return [...books].sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
+  const now = Date.now();
+  const score = new Map(books.map((b) => [b, recommendScore(b, now)]));
+  return [...books].sort((a, b) => score.get(b)! - score.get(a)! || byNew(a, b));
+}
+
+function savedSort(): SortKey {
+  const v = (history.state as Record<string, unknown> | null)?.[SORT_STATE_KEY];
+  return SORTS.some((s) => s.key === v) ? (v as SortKey) : "recommended";
+}
 
 /** 比べるための形にそろえる（全角半角・大文字小文字・カタカナひらがなの違いをなくす） */
 function fold(s: string): string {
@@ -52,6 +87,7 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
   let shown: BookMeta[] = [];
   let left = false;
   let timer = 0;
+  let sort = savedSort();
 
   const input = h("input", {
     class: "search-input",
@@ -66,12 +102,41 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
   const count = h("span", { class: "works-sort-label" });
   const grid = h("div", { class: "cover-grid" });
   const reloadBtn = h("button", { class: "btn", type: "button", onclick: () => load() }, "再読み込み");
+  const sortButtons = SORTS.map(({ key, label }) =>
+    h(
+      "button",
+      {
+        class: "sort-switch-btn",
+        type: "button",
+        onclick: () => {
+          sort = key;
+          history.replaceState({ ...((history.state as object | null) ?? {}), [SORT_STATE_KEY]: key }, "");
+          drawSort();
+          draw();
+        },
+      },
+      label,
+    ),
+  );
+  const drawSort = () =>
+    sortButtons.forEach((btn, i) => btn.setAttribute("aria-pressed", String(SORTS[i].key === sort)));
+  drawSort();
 
   app.append(
     h(
       "div",
       { class: "mypage" },
-      h("div", { class: "page-toolbar" }, h("h1", { class: "page-title" }, "探す", count), reloadBtn),
+      h(
+        "div",
+        { class: "page-toolbar" },
+        h("h1", { class: "page-title" }, "探す", count),
+        h(
+          "div",
+          { class: "toolbar-buttons" },
+          h("div", { class: "sort-switch", role: "group", "aria-label": "並べ方" }, ...sortButtons),
+          reloadBtn,
+        ),
+      ),
       h("div", { class: "search-box" }, input),
       popular,
       note,
@@ -82,7 +147,10 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
   const draw = () => {
     const text = input.value.trim();
     const q = parseQuery(text);
-    shown = all.filter((b) => matches(b, q));
+    shown = sortBooks(
+      all.filter((b) => matches(b, q)),
+      sort,
+    );
     count.textContent = text ? `${shown.length}件` : `${all.length}作品`;
     note.hidden = shown.length > 0;
     note.textContent = all.length === 0 ? "まだ公開されている作品はありません。" : "見つかりませんでした。";

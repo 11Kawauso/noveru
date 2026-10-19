@@ -140,10 +140,11 @@ export class DemoStore implements Store {
   }
 
   async listPublicBooks() {
+    const likes = this.data.likes ?? [];
     return this.data.books
       .filter((b) => b.displayed)
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map(meta);
+      .map((b) => ({ ...meta(b), likeCount: likes.filter((x) => x.ownerId === b.ownerId && x.bookId === b.id).length }));
   }
 
   async getBook(uid: string, bookId: string) {

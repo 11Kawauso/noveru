@@ -65,8 +65,23 @@ service cloud.firestore {
     }
 
     // 「探す」用の公開中の作品の一覧（誰でも読める。書けるのはその本の持ち主だけ）
+    // ただし、いいねの数（likeCount）だけは、いいねした人・取り消した人が ±1 できる
     match /public/{id} {
+      function myLike() {
+        return /databases/$(database)/documents/users/$(resource.data.ownerId)/books/$(resource.data.bookId)/likes/$(request.auth.uid);
+      }
+
+      function likeCountChange() {
+        return request.auth != null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
+          && ((request.resource.data.likeCount == resource.data.get('likeCount', 0) + 1
+                && !exists(myLike()) && existsAfter(myLike()))
+              || (request.resource.data.likeCount == resource.data.get('likeCount', 0) - 1
+                && exists(myLike()) && !existsAfter(myLike())));
+      }
+
       allow read: if true;
+      allow update: if likeCountChange();
       allow create, update: if request.auth != null
         && request.resource.data.ownerId == request.auth.uid
         && id == request.auth.uid + '_' + request.resource.data.bookId
@@ -76,7 +91,9 @@ service cloud.firestore {
         && (!('synopsis' in request.resource.data)
             || (request.resource.data.synopsis is string && request.resource.data.synopsis.size() <= 300))
         && (request.resource.data.cover == null
-            || (request.resource.data.cover is string && request.resource.data.cover.size() <= 100000));
+            || (request.resource.data.cover is string && request.resource.data.cover.size() <= 100000))
+        && (!('likeCount' in request.resource.data)
+            || (request.resource.data.likeCount is int && request.resource.data.likeCount >= 0));
       allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
 

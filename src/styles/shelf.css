@@ -1027,6 +1027,35 @@ a.tag-chip:hover,
   display: none;
 }
 
+/* 「探す」の並べ方（おすすめ／新着／人気） */
+.sort-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.sort-switch-btn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sort-switch-btn:hover {
+  color: var(--text);
+}
+
+.sort-switch-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 .popular-label {
   color: var(--muted);
   font-size: 12px;

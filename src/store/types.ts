@@ -41,6 +41,8 @@ export interface BookMeta {
   /** 作った日時（ミリ秒） */
   createdAt: number;
   updatedAt: number;
+  /** いいねの数（「探す」の一覧でだけ入る。並べ替えに使う） */
+  likeCount?: number;
 }
 
 export interface Book extends BookMeta {
@@ -80,7 +82,7 @@ export interface Store {
   listMyBooks(): Promise<BookMeta[]>;
   /** ある人が並べている本だけ（公開ページ用） */
   listDisplayedBooks(uid: string): Promise<BookMeta[]>;
-  /** 「探す」用：みんなの公開中の作品（新しく更新された順）。表紙は小さい画像 */
+  /** 「探す」用：みんなの公開中の作品（新しく更新された順・いいねの数つき）。表紙は小さい画像 */
   listPublicBooks(): Promise<BookMeta[]>;
   getBook(uid: string, bookId: string): Promise<Book | null>;
 
