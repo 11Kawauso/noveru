@@ -5,7 +5,7 @@
 import { enableBookInfo, reopenBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
-import { h } from "../lib/dom";
+import { h, toast } from "../lib/dom";
 import { renderTagChips } from "../lib/tags";
 import { replacePath } from "../router";
 import { store, StoreError, type BookMeta } from "../store";
@@ -65,12 +65,13 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
   const note = h("p", { class: "loading" }, "読み込み中…");
   const count = h("span", { class: "works-sort-label" });
   const grid = h("div", { class: "cover-grid" });
+  const reloadBtn = h("button", { class: "btn", type: "button", onclick: () => load() }, "再読み込み");
 
   app.append(
     h(
       "div",
       { class: "mypage" },
-      h("div", { class: "page-toolbar" }, h("h1", { class: "page-title" }, "探す", count)),
+      h("div", { class: "page-toolbar" }, h("h1", { class: "page-title" }, "探す", count), reloadBtn),
       h("div", { class: "search-box" }, input),
       popular,
       note,
@@ -139,23 +140,30 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
     }
   });
 
-  store
-    .listPublicBooks()
-    .then((list) => {
-      if (left) return;
-      // 自分の作品は出さない（ほかの人の作品を探すところなので）
-      all = list.filter((b) => b.ownerId !== me?.uid);
-      drawPopular();
-      draw();
-      reopenBookInfo(findShown);
-    })
-    .catch((e) => {
-      note.textContent = e instanceof StoreError ? e.message : "作品を読み込めませんでした。";
-    });
+  /** 作品を読み込む（「再読み込み」でも呼ぶ。新しく公開された作品も出る） */
+  const load = (first = false) => {
+    reloadBtn.disabled = true;
+    return store
+      .listPublicBooks()
+      .then((list) => {
+        if (left) return;
+        // 自分の作品は出さない（ほかの人の作品を探すところなので）
+        all = list.filter((b) => b.ownerId !== me?.uid);
+        drawPopular();
+        draw();
+        if (first) reopenBookInfo(findShown);
+      })
+      .catch((e) => {
+        if (first) note.textContent = e instanceof StoreError ? e.message : "作品を読み込めませんでした。";
+        else toast(e instanceof StoreError ? e.message : "作品を読み込めませんでした。");
+      })
+      .finally(() => (reloadBtn.disabled = false));
+  };
 
   const findShown = (id: string) => shown.find((b) => b.id === id);
   const stopTips = enableBookTips(grid, findShown);
   const stopInfo = enableBookInfo(grid, findShown);
+  load(true);
   input.focus({ preventScroll: true });
 
   return () => {
