@@ -1,5 +1,6 @@
 // ほかの人の作品を押したときに出る「作品の概要」の小窓
 //   表紙・タイトル・作者・タグ・あらすじ・いいねを見て、「読む」で読み始める
+//   小窓から作者のページなどへ移って「戻る」と、また小窓が開いた状態に戻る。
 
 import { navigate } from "../router";
 import type { BookMeta } from "../store";
@@ -10,7 +11,19 @@ import { createLikeButton } from "./likeButton";
 import { withScrollThumb } from "./scrollThumb";
 import { renderTagChips } from "./tags";
 
+/** 履歴（history.state）に、どの本の小窓を開いているかを書いておくときの名前 */
+const STATE_KEY = "noveruBookInfo";
+
+function setOpenBook(id: string | null) {
+  const state = { ...((history.state as Record<string, unknown> | null) ?? {}) };
+  if (id) state[STATE_KEY] = id;
+  else delete state[STATE_KEY];
+  history.replaceState(state, "");
+}
+
 export function openBookInfo(b: BookMeta) {
+  const openedHash = location.hash;
+  setOpenBook(b.id);
   const authorHref = `#/u/${encodeURIComponent(b.ownerId)}`;
   const content = h(
     "div",
@@ -32,10 +45,7 @@ export function openBookInfo(b: BookMeta) {
           "button",
           {
             class: "btn btn-primary",
-            onclick: () => {
-              close();
-              navigate(`/read/${encodeURIComponent(b.ownerId)}/${encodeURIComponent(b.id)}`);
-            },
+            onclick: () => navigate(`/read/${encodeURIComponent(b.ownerId)}/${encodeURIComponent(b.id)}`),
           },
           "読む",
         ),
@@ -43,11 +53,24 @@ export function openBookInfo(b: BookMeta) {
       ),
     ),
   );
-  const close = openDialog(content);
-  // タグや作者のリンクを押したら閉じる（いまと同じ画面へのリンクでも閉じるように）
-  content.addEventListener("click", (e) => {
-    if (e.target instanceof Element && e.target.closest("a[href]")) close();
+  // ほかの画面に移って閉じたときは、戻ったらまた開けるように履歴の印を残す。
+  // この画面のまま閉じたとき（Esc・背景を押す）だけ印を消す
+  const close = openDialog(content, () => {
+    if (location.hash === openedHash) setOpenBook(null);
   });
+  // いまと同じ画面へのリンク（画面が変わらない）を押したときも閉じる
+  content.addEventListener("click", (e) => {
+    const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a[href]") : null;
+    if (a && a.getAttribute("href") === location.hash) close();
+  });
+}
+
+/** 戻ってきたとき、前に小窓を開いていたなら開き直す（本の一覧を読み込んだあとに呼ぶ） */
+export function reopenBookInfo(findBook: (id: string) => BookMeta | undefined) {
+  const id = (history.state as Record<string, unknown> | null)?.[STATE_KEY];
+  const book = typeof id === "string" ? findBook(id) : undefined;
+  if (book) openBookInfo(book);
+  else if (id) setOpenBook(null);
 }
 
 /**

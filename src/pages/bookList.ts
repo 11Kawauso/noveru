@@ -1,6 +1,6 @@
 // 「いいね」と「履歴」の画面：本を表紙で横3列に並べて見せる
 
-import { enableBookInfo } from "../lib/bookInfo";
+import { enableBookInfo, reopenBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, toast } from "../lib/dom";
@@ -66,6 +66,7 @@ function bookListPage(
             ),
           ),
         );
+        reopenBookInfo(findItem);
       })
       .catch((e) => {
         note.textContent = e instanceof StoreError ? e.message : "読み込めませんでした。";

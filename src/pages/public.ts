@@ -3,7 +3,7 @@
 
 import { renderAvatar } from "../lib/avatar";
 import { backLink } from "../lib/backLink";
-import { enableBookInfo } from "../lib/bookInfo";
+import { enableBookInfo, reopenBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
@@ -234,6 +234,7 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
           ),
         ),
       );
+      if (!isMine) reopenBookInfo(findShown);
     },
   );
 
