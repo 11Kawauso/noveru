@@ -1,5 +1,6 @@
 // 「いいね」と「履歴」の画面：本を表紙で横3列に並べて見せる
 
+import { enableBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, toast } from "../lib/dom";
@@ -72,12 +73,15 @@ function bookListPage(
   };
 
   if (opts.action) toolbar.append(opts.action(reload));
-  const stopTips = enableBookTips(grid, (id) => items.find((x) => x.book.id === id)?.book);
+  const findItem = (id: string) => items.find((x) => x.book.id === id)?.book;
+  const stopTips = enableBookTips(grid, findItem);
+  const stopInfo = enableBookInfo(grid, findItem);
   reload();
 
   return () => {
     left = true;
     stopTips();
+    stopInfo();
   };
 }
 

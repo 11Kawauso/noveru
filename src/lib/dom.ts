@@ -61,8 +61,10 @@ export function toast(message: string) {
 export function openDialog(content: HTMLElement, onClose?: () => void): () => void {
   const backdrop = h("div", { class: "dialog-backdrop" }, h("div", { class: "dialog", role: "dialog" }, content));
   const close = () => {
+    if (!backdrop.isConnected) return;
     backdrop.remove();
     document.removeEventListener("keydown", onKey);
+    window.removeEventListener("hashchange", close);
     onClose?.();
   };
   const onKey = (e: KeyboardEvent) => {
@@ -74,6 +76,8 @@ export function openDialog(content: HTMLElement, onClose?: () => void): () => vo
     if (e.target === backdrop) close();
   });
   document.addEventListener("keydown", onKey);
+  // 小窓の中のリンク（タグ・作者など）でほかの画面に移ったら閉じる
+  window.addEventListener("hashchange", close);
   document.body.append(backdrop);
   return close;
 }

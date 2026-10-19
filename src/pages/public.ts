@@ -3,6 +3,7 @@
 
 import { renderAvatar } from "../lib/avatar";
 import { backLink } from "../lib/backLink";
+import { enableBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
@@ -236,11 +237,15 @@ export function publicPage(app: HTMLElement, params: Record<string, string>) {
     },
   );
 
-  const stopTips = enableBookTips(grid, (id) => shown.find((b) => b.id === id));
+  const findShown = (id: string) => shown.find((b) => b.id === id);
+  const stopTips = enableBookTips(grid, findShown);
+  // ほかの人の作品は、すぐ読まずに概要の小窓を出す（自分の作品はそのまま読む）
+  const stopInfo = isMine ? () => {} : enableBookInfo(grid, findShown);
 
   return () => {
     left = true;
     stopTips();
+    stopInfo();
     document.title = "noveru";
   };
 }

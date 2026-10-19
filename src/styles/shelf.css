@@ -285,6 +285,25 @@
   color: var(--muted);
 }
 
+.book-info .book-menu-author a {
+  color: inherit;
+}
+
+.book-info .book-menu-author a:hover {
+  color: var(--accent);
+}
+
+.book-info-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.book-menu-actions .btn {
+  text-align: center;
+  text-decoration: none;
+}
+
 .book-menu-actions {
   display: flex;
   flex-direction: column;

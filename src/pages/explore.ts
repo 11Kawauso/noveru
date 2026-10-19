@@ -1,6 +1,8 @@
 // 「探す」：ほかの人の公開中の作品を、表紙で横3列に並べて探す
 //   作品名（や作者名・読み）をそのまま書くか、「#タグ」で探せる。両方まぜてもいい。
+//   作品を押すと、まず概要の小窓（あらすじ・いいね・「読む」）が出る。
 
+import { enableBookInfo } from "../lib/bookInfo";
 import { enableBookTips } from "../lib/bookTip";
 import { displayTitle, renderCover } from "../lib/cover";
 import { h } from "../lib/dom";
@@ -150,12 +152,15 @@ export function explorePage(app: HTMLElement, params: Record<string, string>) {
       note.textContent = e instanceof StoreError ? e.message : "作品を読み込めませんでした。";
     });
 
-  const stopTips = enableBookTips(grid, (id) => shown.find((b) => b.id === id));
+  const findShown = (id: string) => shown.find((b) => b.id === id);
+  const stopTips = enableBookTips(grid, findShown);
+  const stopInfo = enableBookInfo(grid, findShown);
   input.focus({ preventScroll: true });
 
   return () => {
     left = true;
     clearTimeout(timer);
     stopTips();
+    stopInfo();
   };
 }

@@ -8,7 +8,7 @@ import { h } from "./dom";
 const OFFSET = 16; // カーソルからの距離
 const MARGIN = 8; // 画面の端からの最小の距離
 
-function formatDate(ms: number): string {
+export function formatDate(ms: number): string {
   const d = new Date(ms);
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
