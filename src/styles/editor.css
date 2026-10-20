@@ -5,22 +5,83 @@
   margin: 0 auto;
 }
 
-.writer-toolbar {
-  position: sticky;
-  top: var(--sticky-top);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: -24px -20px 20px;
-  padding: 10px 20px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+/* 書いているあいだは、左のメニューの代わりに書く道具を出す */
+body.is-writing .side-rail {
+  display: none;
 }
 
-.toolbar-spacer {
+.writer-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: var(--rail-w);
+  padding: 22px 14px 16px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.writer-panel .rail-logo {
+  margin-bottom: 14px;
+}
+
+.writer-panel .btn {
+  width: 100%;
+}
+
+.writer-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.writer-panel .zoom {
+  align-self: center;
+}
+
+.writer-panel-spacer {
   flex: 1;
+}
+
+/* スマホ：左のメニューと同じく上に並べる（入りきらなければ2段にして、保存ボタンが隠れないようにする） */
+@media (max-width: 700px) {
+  .writer-panel {
+    position: sticky;
+    bottom: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    padding: 8px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .writer-panel > * {
+    flex: none;
+  }
+
+  .writer-panel .rail-logo {
+    display: none;
+  }
+
+  .writer-panel .btn {
+    width: auto;
+    min-height: 34px;
+    padding: 0 10px;
+  }
+
+  .writer-panel > .writer-panel-spacer {
+    flex: 1;
+  }
 }
 
 .char-count {
@@ -173,12 +234,6 @@
 }
 
 @media (max-width: 600px) {
-  .writer-toolbar {
-    margin: -16px -16px 16px;
-    padding: 8px 12px;
-    gap: 6px;
-  }
-
   .paper {
     --page-pad-block: 32px;
     --page-pad-inline: 22px;

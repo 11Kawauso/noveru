@@ -1,4 +1,6 @@
 // 書く画面：タイトル・作者・本文を書いて、表紙を選んで保存する
+//   書いているあいだは、左のメニューの代わりに書く道具（戻る・向き・字数・拡大縮小・書き方・プレビュー・保存）を出す。
+//   スマホでは上に並ぶ（入りきらなければ2段）。
 
 import { renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
@@ -43,20 +45,20 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   // 書く向きは新しく書くときに決めて、あとからは変えられない（表示だけ）
   const dirBadge = h("span", { class: "dir-badge", title: "書く向きは、新しく書くときに決めます" });
 
-  const toolbar = h(
-    "div",
-    { class: "writer-toolbar" },
+  const panel = h(
+    "aside",
+    { class: "writer-panel", "aria-label": "書く道具" },
+    h("a", { class: "rail-logo", href: "#/", title: "noveru" }, "noveru"),
     backLink("/write", "btn btn-ghost"),
-    dirBadge,
-    count,
+    h("div", { class: "writer-info" }, dirBadge, count),
     createZoomControl(),
-    h("div", { class: "toolbar-spacer" }),
+    h("div", { class: "writer-panel-spacer" }),
     h("button", { class: "btn btn-ghost", onclick: () => showHelp() }, "書き方"),
     h("button", { class: "btn", onclick: () => showPreview() }, "プレビュー"),
     h("button", { class: "btn btn-primary", onclick: () => openSaveDialog() }, "保存"),
   );
 
-  const writer = h("div", { class: "writer", hidden: !bookId }, toolbar, scroller);
+  const writer = h("div", { class: "writer", hidden: !bookId }, scroller);
   app.append(writer);
 
   const snapshot = () =>
@@ -352,6 +354,9 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     body.value = data.body;
     cover = data.cover;
     writer.hidden = false;
+    // 左のメニューを隠して、書く道具を出す（スマホでは上に出るので、ページの一番前に置く）
+    document.body.prepend(panel);
+    document.body.classList.add("is-writing");
     setDirection(data.vertical);
     started = true;
     saved = snapshot();
@@ -407,5 +412,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     window.removeEventListener("resize", grow);
     stopZoom();
     closePreview?.();
+    panel.remove();
+    document.body.classList.remove("is-writing");
   };
 }
