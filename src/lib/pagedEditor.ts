@@ -154,12 +154,21 @@ export function createPagedEditor(opts: {
     const box = scroller.getBoundingClientRect();
     const margin = 40;
     if (force || r.top < box.top + margin || r.bottom > box.bottom - margin) {
+      autoScroll();
       scroller.scrollBy({ top: r.top - (box.top + box.height * 0.3) });
     }
     if (r.left < box.left || r.right > box.right) {
+      autoScroll();
       scroller.scrollBy({ left: r.left - (box.left + box.width / 2) });
     }
   };
+
+  /**
+   * こちらでスクロールするときに呼ぶ。少しのあいだは、スクロールしても「いまのページ」を変えない
+   * （カーソルのあるページや、押したページのままにする）
+   */
+  let autoScrollUntil = 0;
+  const autoScroll = () => (autoScrollUntil = performance.now() + 250);
 
   /** 本文の pos 文字目にカーソルを置く */
   const placeCaret = (pos: number, scroll: "none" | "ifNeeded" | "force", end = pos) => {
@@ -423,9 +432,22 @@ export function createPagedEditor(opts: {
     opts.onCurrent(index, fromCaret ? caret() : null);
   };
 
-  /** スクロールしたとき：画面の真ん中あたりにあるページを、いまのページにする */
+  /**
+   * スクロールしたとき：画面の真ん中あたりにあるページを、いまのページにする。
+   * ただし、書いているページ（カーソルのあるページ）が見えているあいだは、そのページのまま
+   */
   const onScroll = () => {
+    if (performance.now() < autoScrollUntil) return;
     const box = scroller.getBoundingClientRect();
+    const fp = focusedPage();
+    if (fp) {
+      const r = fp.wrap.getBoundingClientRect();
+      if (r.bottom > box.top && r.top < box.bottom) {
+        const index = pages.indexOf(fp) + 2;
+        if (index !== current) setCurrent(index);
+        return;
+      }
+    }
     const line = box.top + box.height * 0.4;
     let lo = 0;
     let hi = pages.length + 1;
@@ -490,6 +512,7 @@ export function createPagedEditor(opts: {
       const w = wrapAt(index);
       if (!w) return;
       const box = scroller.getBoundingClientRect();
+      autoScroll();
       scroller.scrollBy({ top: w.getBoundingClientRect().top - box.top - 16 });
       if (index >= 2) {
         pages[index - 2].ta.focus({ preventScroll: true });

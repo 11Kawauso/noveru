@@ -51,19 +51,31 @@ const STOP = Symbol("stop");
 
 /**
  * 本文をページごとの HTML に分ける。measure は実際のページと同じ大きさの入れ物。
+ * raw は、書く画面の書く欄と同じ見えない欄と、その本文。ふりがなの書き方（|漢字《かんじ》）は書く欄では
+ * そのまま見えて長くなるので、読む画面の見た目と書く欄の両方に入るところでページを区切る
+ * （書く画面の紙が、ページからはみ出して伸びないように）。
  * stop を渡すと、2ページ目より後で「ここから始まるページ」が stop に合ったところでやめて、その位置を返す
  * （書く画面で、前に区切った結果と同じになるところから先は計算し直さないため）。
  */
 function paginate(
   measure: HTMLElement,
+  raw: { ta: HTMLTextAreaElement; text: string },
   paragraphs: Paragraph[],
   vertical: boolean,
   stop?: (start: number) => boolean,
 ): { pages: PageInfo[]; stoppedAt?: number } {
   const pages: PageInfo[] = [];
   let pageStart = 0;
-  const fits = () =>
-    vertical ? measure.scrollWidth <= measure.clientWidth + 1 : measure.scrollHeight <= measure.clientHeight + 1;
+  const overflows = (el: HTMLElement) =>
+    vertical ? el.scrollWidth > el.clientWidth + 1 : el.scrollHeight > el.clientHeight + 1;
+  /** いまのページの中身（本文の pageStart〜end）が、読む画面でも書く欄でも1ページに入るか */
+  const fits = (end: number) => {
+    if (overflows(measure)) return false;
+    raw.ta.value = raw.text.slice(pageStart, end);
+    return !overflows(raw.ta);
+  };
+  /** 段落の tokens[0]〜tokens[i - 1] が本文のどこで終わるか */
+  const endOf = (para: Paragraph, i: number) => para.offsets[i - 1] + para.tokens[i - 1].len;
   const pushPage = () => {
     pages.push({ html: measure.innerHTML, start: pageStart });
     measure.replaceChildren();
@@ -93,14 +105,15 @@ function paginate(
     for (const para of paragraphs) {
       const { tokens } = para;
       if (tokens.length === 0) {
-        // 空行。ページの先頭に来る空行は省く
-        if (!measure.firstChild) continue;
+        // 空行も1行分の場所をとる。入らなければ次のページの先頭へ
+        // （省くと、書く画面で改行を続けたときに次のページへ送られず、紙が伸び続けてしまう）
         const p = document.createElement("p");
         p.innerHTML = "<br>";
         add(p, para.start);
-        if (!fits()) {
+        if (!fits(para.start) && measure.childElementCount > 1) {
           p.remove();
           pushPage();
+          add(p, para.start);
         }
         continue;
       }
@@ -112,7 +125,7 @@ function paginate(
         p.className = `heading heading-${para.heading}`;
         p.innerHTML = joinTokens(tokens, 0, tokens.length);
         add(p, para.start);
-        if (!fits() && measure.childElementCount > 1) {
+        if (!fits(endOf(para, tokens.length)) && measure.childElementCount > 1) {
           p.remove();
           pushPage();
           add(p, para.start);
@@ -125,7 +138,7 @@ function paginate(
         const p = document.createElement("p");
         add(p, para.offsets[start]);
         p.innerHTML = joinTokens(tokens, start, tokens.length);
-        if (fits()) break;
+        if (fits(endOf(para, tokens.length))) break;
 
         // このページに入るぎりぎりの文字数を探す
         let lo = 0;
@@ -133,7 +146,7 @@ function paginate(
         while (lo < hi) {
           const mid = Math.ceil((lo + hi) / 2);
           p.innerHTML = joinTokens(tokens, start, start + mid);
-          if (fits()) lo = mid;
+          if (fits(endOf(para, start + mid))) lo = mid;
           else hi = mid - 1;
         }
         // 句読点などが次のページの先頭に、開きかっこがこのページの最後に来ないようにする
@@ -168,14 +181,21 @@ function paginate(
  */
 export function createPaginator() {
   const measureContent = h("div", { class: "page-content" });
-  const measurer = h("div", { class: "reader measuring" }, h("div", { class: "page" }, measureContent));
+  // 書く画面の書く欄と同じ欄（ふりがなの書き方をそのまま入れて、1ページに入るかを測る）
+  const rawTa = h("textarea", { class: "w-body", tabindex: -1, "aria-hidden": "true" });
+  const measurer = h(
+    "div",
+    { class: "reader measuring" },
+    h("div", { class: "page" }, measureContent),
+    h("div", { class: "page" }, h("div", { class: "page-content" }, rawTa)),
+  );
   document.body.append(measurer);
   return {
     paginate(book: ReadableBook): PageInfo[] {
       measurer.classList.toggle("is-vertical", book.vertical);
       return [
         { html: titlePageHtml(book), start: 0 },
-        ...paginate(measureContent, tokenizeBody(book.body), book.vertical).pages,
+        ...paginate(measureContent, { ta: rawTa, text: book.body }, tokenizeBody(book.body), book.vertical).pages,
       ];
     },
     /**
@@ -190,7 +210,14 @@ export function createPaginator() {
       stop?: (start: number) => boolean,
     ): { pages: PageInfo[]; stoppedAt?: number } {
       measurer.classList.toggle("is-vertical", vertical);
-      const res = paginate(measureContent, tokenizeBody(body.slice(from)), vertical, stop && ((at) => stop(at + from)));
+      const text = body.slice(from);
+      const res = paginate(
+        measureContent,
+        { ta: rawTa, text },
+        tokenizeBody(text),
+        vertical,
+        stop && ((at) => stop(at + from)),
+      );
       return {
         pages: res.pages.map((p) => ({ html: p.html, start: p.start + from })),
         stoppedAt: res.stoppedAt === undefined ? undefined : res.stoppedAt + from,
