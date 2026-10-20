@@ -100,6 +100,16 @@ body.is-writing .side-rail {
   flex: 1;
 }
 
+/* ふりがな・傍点・見出しのボタン（線で囲んで、ひとまとまりに見せる） */
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0;
+  padding: 6px 0;
+  border-block: 1px solid var(--border);
+}
+
 /* 目次・ページのボタンは、画面がせまくてパネルをしまっているときだけ出す */
 .drawer-toggle {
   display: none;
@@ -236,14 +246,106 @@ body.is-writing .side-rail {
   border-left: 1px solid var(--border);
 }
 
-.page-thumbs {
+/* 小さいページと「＋ ページを足す」を入れて、スクロールする所 */
+.page-thumbs-scroll {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 16px 0;
+  padding: 16px 0 20px;
   overflow-y: auto;
+}
+
+.page-thumbs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.page-thumb {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ページを消す × （マウスを合わせたときだけ出す。指で使う画面ではいつも出す） */
+.page-thumb-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.page-thumb:hover .page-thumb-del,
+.page-thumb:focus-within .page-thumb-del {
+  opacity: 1;
+}
+
+.page-thumb-del:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@media (hover: none) {
+  .page-thumb-del {
+    opacity: 1;
+  }
+}
+
+/* ドラッグで順番を入れ替えているあいだ */
+.page-thumb.is-dragging {
+  opacity: 0.5;
+}
+
+.page-thumbs.is-sorting,
+.page-thumbs.is-sorting .page-thumb {
+  cursor: grabbing;
+}
+
+/* ＋ ページを足す */
+.page-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: none;
+  width: var(--thumb-w);
+  height: 72px;
+  padding: 0;
+  border: 1.5px dashed var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.page-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.page-add-plus {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .page-thumb {
@@ -627,6 +729,14 @@ body.is-writing .demo-banner {
     margin: 0 4px;
   }
 
+  .tool-group {
+    flex-direction: row;
+    margin: 0 2px;
+    padding: 0 2px;
+    border-block: none;
+    border-inline: 1px solid var(--border);
+  }
+
   .writer-outline {
     left: 0;
     z-index: 20;
@@ -657,6 +767,30 @@ body.is-writing .demo-banner {
 }
 
 /* ---- 書き方の説明 ---- */
+
+.help-list {
+  margin: 0 0 14px;
+  padding-left: 1.2em;
+  line-height: 1.8;
+}
+
+.help-list li + li {
+  margin-top: 6px;
+}
+
+.help-sub {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ふりがなを付ける小窓 */
+.ruby-dialog-base {
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 22px;
+  text-align: center;
+}
 
 .help-table {
   width: 100%;

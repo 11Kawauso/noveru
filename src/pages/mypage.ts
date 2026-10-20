@@ -95,7 +95,7 @@ export function myPage(app: HTMLElement) {
         h(
           "p",
           { class: "shelf-empty" },
-          books.length === 0 ? "本棚はまだ空です。「＋ 新しく書く」から小説を書いてみましょう。" : "本棚の本はすべて公開中です。",
+          books.length === 0 ? "本棚はまだ空です。「＋ 新しく書く」から物語を書いてみましょう。" : "本棚の本はすべて公開中です。",
         ),
       );
     }

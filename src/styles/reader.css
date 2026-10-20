@@ -37,6 +37,25 @@
   touch-action: pan-y;
 }
 
+/* 長いページで、まだ続きがあるとき（ページの下に小さく出す） */
+.page.has-more::after {
+  content: "続きは下へ ↓";
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.reader.is-vertical .page.has-more::after {
+  content: "← 続きは左へ";
+}
+
 /* 区切りを計算するための見えないページ */
 .reader.measuring {
   position: fixed;
@@ -78,6 +97,11 @@
   color: var(--text);
   overflow-wrap: anywhere;
   line-break: strict;
+}
+
+/* 作者が長く書いたページは、ページの中でスクロールして読む */
+.reader:not(.measuring) .page-content {
+  overflow: auto;
 }
 
 .reader.is-vertical .page-content,

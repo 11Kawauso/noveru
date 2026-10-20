@@ -1,9 +1,10 @@
-// 読む画面の本体：文庫本サイズのページに区切って、1ページずつめくって読む
+// 読む画面の本体：文庫本サイズのページを、1ページずつめくって読む
 // 「読む」ページと、書く画面の「プレビュー」の両方で使う。
-// ページの区切り方（createPaginator）は、書く画面の右のページ一覧でも使う。
+// ページは作者が書く画面で足したとおり（本文の中の区切りの印 PAGE_BREAK で分ける）。長いページは中でスクロールする。
+// 区切りの印がない本文（ページを自分で足す前に保存した作品）は、文庫本の大きさで自動で区切る（createPaginator）。
 
 import { escapeHtml, h } from "./dom";
-import { tokenizeBody, type Paragraph, type Token } from "./ruby";
+import { PAGE_BREAK, tokenizeBody, type Paragraph, type Token } from "./ruby";
 import { createZoomControl, getZoom, onZoomChange } from "./pageZoom";
 
 export interface ReadableBook {
@@ -46,24 +47,18 @@ export interface PageInfo {
   start: number;
 }
 
-/** paginate を途中でやめるときの印 */
-const STOP = Symbol("stop");
-
 /**
  * 本文をページごとの HTML に分ける。measure は実際のページと同じ大きさの入れ物。
  * raw は、書く画面の書く欄と同じ見えない欄と、その本文。ふりがなの書き方（|漢字《かんじ》）は書く欄では
  * そのまま見えて長くなるので、読む画面の見た目と書く欄の両方に入るところでページを区切る
  * （書く画面の紙が、ページからはみ出して伸びないように）。
- * stop を渡すと、2ページ目より後で「ここから始まるページ」が stop に合ったところでやめて、その位置を返す
- * （書く画面で、前に区切った結果と同じになるところから先は計算し直さないため）。
  */
 function paginate(
   measure: HTMLElement,
   raw: { ta: HTMLTextAreaElement; text: string },
   paragraphs: Paragraph[],
   vertical: boolean,
-  stop?: (start: number) => boolean,
-): { pages: PageInfo[]; stoppedAt?: number } {
+): PageInfo[] {
   const pages: PageInfo[] = [];
   let pageStart = 0;
   const overflows = (el: HTMLElement) =>
@@ -82,24 +77,15 @@ function paginate(
   };
   /** 段落をページに足す（ページの最初のものなら、そこをページの始まりにする） */
   const add = (p: HTMLElement, at: number) => {
-    if (!measure.firstChild) {
-      pageStart = at;
-      if (pages.length && stop?.(at)) throw STOP;
-    }
+    if (!measure.firstChild) pageStart = at;
     measure.append(p);
   };
 
   measure.replaceChildren();
-  try {
-    paginateInto(paragraphs);
-  } catch (e) {
-    if (e !== STOP) throw e;
-    measure.replaceChildren();
-    return { pages, stoppedAt: pageStart };
-  }
+  paginateInto(paragraphs);
   if (measure.firstChild) pushPage();
   if (pages.length === 0) pages.push({ html: "", start: 0 });
-  return { pages };
+  return pages;
 
   function paginateInto(paragraphs: Paragraph[]) {
     for (const para of paragraphs) {
@@ -195,38 +181,34 @@ export function createPaginator() {
       measurer.classList.toggle("is-vertical", book.vertical);
       return [
         { html: titlePageHtml(book), start: 0 },
-        ...paginate(measureContent, { ta: rawTa, text: book.body }, tokenizeBody(book.body), book.vertical).pages,
+        ...paginate(measureContent, { ta: rawTa, text: book.body }, tokenizeBody(book.body), book.vertical),
       ];
-    },
-    /**
-     * 本文の from 文字目（ページの始まり）から後ろだけを区切る（タイトルのページはなし）。
-     * ページの区切り方は、そこから後ろの文章だけで決まるので、前のページは計算し直さなくていい。
-     * stop（本文の中の位置で聞く）に合うページの始まりまで来たら、そこでやめて stoppedAt を返す。
-     */
-    paginateFrom(
-      body: string,
-      from: number,
-      vertical: boolean,
-      stop?: (start: number) => boolean,
-    ): { pages: PageInfo[]; stoppedAt?: number } {
-      measurer.classList.toggle("is-vertical", vertical);
-      const text = body.slice(from);
-      const res = paginate(
-        measureContent,
-        { ta: rawTa, text },
-        tokenizeBody(text),
-        vertical,
-        stop && ((at) => stop(at + from)),
-      );
-      return {
-        pages: res.pages.map((p) => ({ html: p.html, start: p.start + from })),
-        stoppedAt: res.stoppedAt === undefined ? undefined : res.stoppedAt + from,
-      };
     },
     destroy() {
       measurer.remove();
     },
   };
+}
+
+/** 作者が足した1ページ分の本文を、読む画面の HTML にする（ページからはみ出すときは、ページの中でスクロールする） */
+export function pageHtml(text: string): string {
+  return tokenizeBody(text)
+    .map((para) => {
+      if (para.tokens.length === 0) return "<p><br></p>";
+      const html = joinTokens(para.tokens, 0, para.tokens.length);
+      return para.heading ? `<p class="heading heading-${para.heading}">${html}</p>` : `<p>${html}</p>`;
+    })
+    .join("");
+}
+
+/**
+ * 読む画面に出すページ（0 がタイトルのページ）。
+ * 作者が自分でページを足した本文は、そのページのまま。ページの区切りの印がない本文
+ * （ページを自分で足す前に保存した作品）は、文庫本の大きさで自動で区切る。
+ */
+export function bookPages(book: ReadableBook, paginator: ReturnType<typeof createPaginator>): string[] {
+  if (!book.body.includes(PAGE_BREAK)) return paginator.paginate(book).map((p) => p.html);
+  return [titlePageHtml(book), ...book.body.split(PAGE_BREAK).map(pageHtml)];
 }
 
 export function titlePageHtml(book: ReadableBook): string {
@@ -278,6 +260,10 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     index = Math.max(0, Math.min(index, pages.length - 1));
     content.innerHTML = pages[index] ?? "";
     content.classList.toggle("is-title", index === 0);
+    // 長いページは中でスクロールするので、めくったら始めから
+    content.scrollTop = 0;
+    content.scrollLeft = 0;
+    drawMore();
     counter.textContent = `${index + 1} / ${pages.length}`;
     const atStart = index === 0;
     const atEnd = index === pages.length - 1;
@@ -319,7 +305,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     if (destroyed) return;
     const progress = pages.length > 1 ? index / (pages.length - 1) : 0;
     el.classList.toggle("is-vertical", book.vertical);
-    pages = paginator.paginate(book).map((p) => p.html);
+    pages = bookPages(book, paginator);
     index = pages.length > 1 && index > 0 ? Math.round(progress * (pages.length - 1)) : index;
     show();
     fit();
@@ -343,6 +329,27 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       opts.onClose();
     }
   };
+
+  /** 長いページで、まだ続きがあるときは、ページの下に「続きがあります」と出す（スクロールバーは出していないので） */
+  function drawMore() {
+    const more = book.vertical
+      ? Math.abs(content.scrollLeft) + content.clientWidth < content.scrollWidth - 2
+      : content.scrollTop + content.clientHeight < content.scrollHeight - 2;
+    page.classList.toggle("has-more", more);
+  }
+  content.addEventListener("scroll", drawMore, { passive: true });
+
+  // 縦書きの長いページは横にはみ出すので、マウスのホイール（上下）で左右に動けるようにする
+  content.addEventListener(
+    "wheel",
+    (e) => {
+      if (!book.vertical || content.scrollWidth <= content.clientWidth + 1) return;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      content.scrollLeft -= e.deltaY;
+    },
+    { passive: false },
+  );
 
   // ページの左右をクリックしてめくる
   page.addEventListener("click", (e) => {

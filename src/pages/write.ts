@@ -8,7 +8,7 @@
 
 import { backLink } from "../lib/backLink";
 import { renderCover } from "../lib/cover";
-import { h, openDialog, toast } from "../lib/dom";
+import { confirmDialog, h, openDialog, toast } from "../lib/dom";
 import { compressCover } from "../lib/image";
 import { createPagedEditor } from "../lib/pagedEditor";
 import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
@@ -33,6 +33,12 @@ const TOOL_ICONS = {
   preview:
     '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
   save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+  // ふりがな：字の上に小さな字
+  ruby: '<path d="M7 4.5h10"/><rect x="6" y="9" width="12" height="11" rx="1.5"/><path d="M9.5 13h5M12 13v4.5"/>',
+  // 傍点：字の上に点
+  bouten: '<circle cx="12" cy="4.5" r="1.3" fill="currentColor"/><rect x="6" y="9" width="12" height="11" rx="1.5"/>',
+  // 見出し：太い線と細い線
+  heading: '<path d="M5 6h14" stroke-width="3"/><path d="M5 12h10M5 17h12"/>',
 };
 
 function toolIcon(name: keyof typeof TOOL_ICONS): HTMLElement {
@@ -50,6 +56,18 @@ function toolButton(name: keyof typeof TOOL_ICONS, label: string, onclick: () =>
     h("span", { class: "tool-label" }, label),
   );
 }
+
+/** 本文の字に付けるボタン（押しても本文のカーソルと選んだ字がそのままになるように） */
+function formatButton(name: keyof typeof TOOL_ICONS, label: string, title: string, onclick: () => void) {
+  const btn = toolButton(name, label, onclick, "is-format");
+  btn.title = title;
+  btn.addEventListener("mousedown", (e) => e.preventDefault());
+  return btn;
+}
+
+// ふりがなを付けられる長さ（ruby.ts の書き方の決まりに合わせる）
+const MAX_RUBY_BASE = 20;
+const MAX_RUBY_TEXT = 30;
 
 // 1作品に保存できる本文の文字数（Firestore の1件あたりの上限から決めた値）
 const MAX_CHARS = 300_000;
@@ -81,18 +99,29 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   /** いまのページ（0：表紙、1：タイトル、2〜：本文） */
   let currentPage = 0;
+  /** 右のページの一覧で、描き直しを待っているページ（書いている途中は少し待ってからまとめて） */
+  const thumbTimers = new Map<number, number>();
 
   const editor = createPagedEditor({
     scroller,
     title: () => ({ title: title.value, author: author.value }),
     meta: () => currentMeta(cover),
-    onChange: () => {
+    onChange: (page) => {
       drawCount();
       outline.update();
-    },
-    onPages: (pages, from) => {
-      pagesPanel.setPages(pages, from, vertical);
       scrollbar.update();
+      if (page === null) {
+        pagesPanel.render();
+        return;
+      }
+      clearTimeout(thumbTimers.get(page));
+      thumbTimers.set(
+        page,
+        window.setTimeout(() => {
+          thumbTimers.delete(page);
+          pagesPanel.updatePage(page);
+        }, 300),
+      );
     },
     onCurrent: (index, caret) => {
       currentPage = index;
@@ -119,7 +148,26 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   };
 
   const outline = createOutlinePanel({ title, author, editor, jump: jumpTo });
-  const pagesPanel = createPagesPanel({ meta: () => currentMeta(cover), jumpToPage });
+  const pagesPanel = createPagesPanel({
+    meta: () => currentMeta(cover),
+    title: () => ({ title: title.value, author: author.value }),
+    vertical: () => vertical,
+    pageCount: () => editor.pageCount(),
+    pageText: (i) => editor.pageText(i),
+    jumpToPage,
+    addPage: () => {
+      closeDrawers();
+      editor.addPage();
+    },
+    deletePage: async (i) => {
+      if (editor.pageText(i).trim()) {
+        const ok = await confirmDialog(`${i + 2}ページを消しますか？\nこのページに書いた文も消えます。`, "消す", true);
+        if (!ok) return;
+      }
+      editor.deletePage(i);
+    },
+    movePage: (from, to) => editor.movePage(from, to),
+  });
 
   /** 画面がせまいときに、目次・ページのパネルを出し入れする */
   const toggleDrawer = (el: HTMLElement) => {
@@ -132,6 +180,71 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     pagesPanel.el.classList.remove("is-open");
   };
 
+  // ---- ふりがな・傍点・見出しのボタン（記号を覚えなくても付けられる） ----
+
+  /** 選んだ字にふりがなを付ける（小窓で読みを聞く） */
+  const addRuby = () => {
+    const base = editor.selectedText();
+    if (!base) return toast("ふりがなを付けたい字を、本文で選んでから押してください。");
+    if (base.includes("\n") || Array.from(base).length > MAX_RUBY_BASE) {
+      return toast(`ふりがなは、1行の中の${MAX_RUBY_BASE}字までの言葉に付けられます。`);
+    }
+    const restore = editor.rememberSelection();
+    const reading = h("input", {
+      type: "text",
+      maxlength: MAX_RUBY_TEXT,
+      placeholder: "例：かんじ",
+      autocomplete: "off",
+    });
+    const error = h("p", { class: "form-error" });
+    const ok = () => {
+      const r = reading.value.trim();
+      if (!r) {
+        error.textContent = "ふりがなを入力してください。";
+        return;
+      }
+      if (/[《》\n]/.test(r)) {
+        error.textContent = "ふりがなに《 》は使えません。";
+        return;
+      }
+      close();
+      restore();
+      editor.wrapSelection((s) => `|${s}《${r}》`);
+    };
+    reading.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        ok();
+      }
+    });
+    const close = openDialog(
+      h(
+        "div",
+        { class: "ruby-dialog" },
+        h("h2", {}, "ふりがなを付ける"),
+        h("p", { class: "ruby-dialog-base" }, base),
+        h("label", { class: "field" }, h("span", {}, "ふりがな"), reading),
+        error,
+        h(
+          "div",
+          { class: "dialog-buttons" },
+          h("button", { class: "btn", onclick: () => close() }, "やめる"),
+          h("button", { class: "btn btn-primary", onclick: ok }, "付ける"),
+        ),
+      ),
+      () => restore(),
+    );
+    reading.focus();
+  };
+
+  /** 選んだ字に傍点（・）を付ける */
+  const addBouten = () => {
+    const text = editor.selectedText();
+    if (!text) return toast("傍点を付けたい字を、本文で選んでから押してください。");
+    if (text.includes("\n")) return toast("傍点は、1行の中の字に付けられます。");
+    editor.wrapSelection((s) => `《《${s}》》`);
+  };
+
   const back = backLink("/write", "tool-btn");
   back?.replaceChildren(toolIcon("back"), h("span", { class: "tool-label" }, "戻る"));
 
@@ -140,6 +253,15 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     { class: "writer-panel", "aria-label": "書く道具" },
     back,
     h("div", { class: "writer-info" }, dirBadge, count),
+    h(
+      "div",
+      { class: "tool-group", role: "group", "aria-label": "本文の字に付ける" },
+      formatButton("ruby", "ふりがな", "選んだ字にふりがなを付ける", addRuby),
+      formatButton("bouten", "傍点", "選んだ字に傍点（・）を付ける", addBouten),
+      formatButton("heading", "見出し", "カーソルのある行を見出しにする（もう一度押すと戻す）", () =>
+        outline.markLine(1),
+      ),
+    ),
     toolButton("outline", "目次", () => toggleDrawer(outline.el), "drawer-toggle outline-toggle"),
     toolButton("pages", "ページ", () => toggleDrawer(pagesPanel.el), "drawer-toggle pages-toggle"),
     h("div", { class: "writer-panel-spacer" }),
@@ -150,10 +272,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   // 紙の右側：縦に長いスクロールバーと、その下（右下）に拡大縮小
   const scrollbar = createScrollbar(scroller, {
-    label: () => {
-      const total = editor.readerPages().length;
-      return currentPage === 0 ? "表紙" : `${currentPage} / ${total}`;
-    },
+    label: () => (currentPage === 0 ? "表紙" : `${currentPage} / ${editor.pageCount() + 1}`),
   });
   const writer = h(
     "div",
@@ -166,7 +285,10 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   writer.addEventListener("pointerdown", closeDrawers);
 
   for (const field of [title, author]) {
-    field.addEventListener("input", () => editor.refreshTitle());
+    field.addEventListener("input", () => {
+      editor.refreshTitle();
+      pagesPanel.refreshTitle();
+    });
     field.addEventListener("focus", () => {
       outline.markCurrent(null);
       pagesPanel.markCurrent(1);
@@ -253,6 +375,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   /** 保存の小窓：タイトルの読み・タグ・表紙の画像を決めて保存する */
   const openSaveDialog = () => {
+    if (!started) return; // ページができるまでは保存しない
     let draftCover = cover;
     const tagsInput = h("input", {
       type: "text",
@@ -313,7 +436,10 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           const prevReading = titleReading;
           const prevTags = tags;
           const prevSynopsis = synopsis;
-          synopsis = synopsisInput.value.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+          synopsis = synopsisInput.value
+            .replace(/\r\n?/g, "\n")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
           cover = draftCover;
           titleReading = readingInput.value;
           tags = parseTags(tagsInput.value);
@@ -368,7 +494,11 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           h(
             "div",
             { class: "save-side" },
-            h("p", { class: "form-note" }, "表紙にする画像を選べます。選ばなければ、タイトルと作者を書いた表紙になります。"),
+            h(
+              "p",
+              { class: "form-note" },
+              "表紙にする画像を選べます。選ばなければ、タイトルと作者を書いた表紙になります。",
+            ),
             h("button", { class: "btn", type: "button", onclick: () => fileInput.click() }, "画像を選ぶ"),
             removeBtn,
             fileInput,
@@ -402,19 +532,35 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         { class: "help" },
         h("h2", {}, "書き方"),
         h(
+          "ul",
+          { class: "help-list" },
+          h("li", {}, "思いついたことを、そのまま書いていきましょう。改行すると段落が分かれます。"),
+          h(
+            "li",
+            {},
+            "ページは、右の「＋ ページを足す」で足せます。1ページにいくらでも書けて、読む人はページをめくって読みます。ページの × で消したり、ドラッグで順番を入れ替えたりもできます。",
+          ),
+          h(
+            "li",
+            {},
+            "ふりがな・傍点は、字を選んでから左の「ふりがな」「傍点」を押すと付けられます。見出しは、行にカーソルを置いて「見出し」を押します。",
+          ),
+        ),
+        h("p", { class: "help-sub" }, "記号で書くこともできます："),
+        h(
           "table",
           { class: "help-table" },
           row("|漢字《かんじ》", "「漢字」にふりがな"),
           row("漢字《かんじ》", "直前の漢字にふりがな（| は省略できます）"),
           row("《《強調》》", "「強調」に傍点"),
           row("|《", "《 をそのまま表示"),
-          row("# 第一章", "章の見出し（行の先頭に書く）。読むときは新しいページから始まる"),
-          row("## その一", "節の見出し"),
+          row("# 見出し", "見出し（行の先頭に書く）"),
+          row("## 小見出し", "小見出し"),
         ),
         h(
           "p",
           { class: "form-note" },
-          "| は全角の ｜、# は全角の ＃ でも大丈夫です。見出しは目次に並び、押すとその行へ飛べます。改行すると段落が分かれます。Ctrl + S でも保存できます。",
+          "| は全角の ｜、# は全角の ＃ でも大丈夫です。見出しは目次に並び、押すとその行へ飛べます。Ctrl + S でも保存できます。",
         ),
       ),
     );
@@ -457,12 +603,14 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     document.body.classList.add("is-writing");
     applyZoom();
     writer.classList.add("is-loading");
-    const loading = editor.load(data.body, data.vertical);
-    started = true;
-    saved = snapshot();
-    drawCount();
-    outline.update();
-    loading.then(() => {
+    editor.load(data.body, data.vertical).then(() => {
+      // ページができてから書き始め（それまでは本文が空なので、保存もしない）。
+      // ページを自分で足す前に保存した作品は、ここでページに分かれるが、まだ変更とはみなさない
+      started = true;
+      saved = snapshot();
+      drawCount();
+      outline.update();
+      pagesPanel.render();
       writer.classList.remove("is-loading");
       // タイトルがまだなければタイトルの欄から（目次のパネルをしまっているときは本文の最初から）
       if (!data.title) title.focus({ preventScroll: true });
@@ -494,7 +642,16 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           class: "dir-choice",
           onclick: () => {
             chooser.remove();
-            start({ title: "", titleReading: "", tags: [], synopsis: "", author: user.penName, body: "", vertical: v, cover: null });
+            start({
+              title: "",
+              titleReading: "",
+              tags: [],
+              synopsis: "",
+              author: user.penName,
+              body: "",
+              vertical: v,
+              cover: null,
+            });
           },
         },
         h("div", { class: `dir-sample ${v ? "is-vertical" : "is-horizontal"}`, "aria-hidden": "true" }),
@@ -505,7 +662,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
       "div",
       { class: "dir-chooser" },
       h("h1", { class: "page-title" }, "どちらで書きますか？"),
-      h("p", { class: "form-note" }, "書く向きは、あとから変えられません。"),
+      h("p", { class: "form-note" }, "書く向きは、あとから変えられません。迷ったら、横書きが書きやすくておすすめです。"),
       h("div", { class: "dir-choices" }, choice(true), choice(false)),
       h("a", { class: "btn btn-ghost", href: "#/write" }, "やめる"),
     );

@@ -4,10 +4,16 @@
 //   漢字《かんじ》    → 直前の漢字のまとまりにふりがな
 //   《《強調》》      → 強調 に傍点
 //   |《              → 《 をそのまま表示したいとき
-//   # 見出し         → 章の見出し（行の先頭。全角の ＃ でもいい）。読む画面では章は新しいページから始まる
-//   ## 見出し        → 節の見出し
+//   # 見出し         → 見出し（行の先頭。全角の ＃ でもいい）
+//   ## 見出し        → 小見出し
 
 import { escapeHtml } from "./dom";
+
+/**
+ * 本文の中の、ページの区切りの印（書く画面で作者が足したページのあいだに入る。目に見えない文字）。
+ * これがない本文（ページを自分で足す前に保存した作品）は、読む画面で自動でページに区切る。
+ */
+export const PAGE_BREAK = "\f";
 
 /**
  * 文章の最小単位。ページの区切りはこの単位でしか切らない
@@ -24,7 +30,7 @@ export interface Token {
 /** 1段落（本文の1行） */
 export interface Paragraph {
   tokens: Token[];
-  /** 0：ふつうの段落、1：章の見出し、2：節の見出し */
+  /** 0：ふつうの段落、1：見出し、2：小見出し */
   heading: 0 | 1 | 2;
   /** 本文の中で、この段落が始まる位置 */
   start: number;
@@ -149,7 +155,7 @@ export function tokenizeLine(line: string): Token[] {
 
 const HEADING = /^([#＃]{1,2})[ 　\t]*/;
 
-/** 行が見出しなら、その深さ（1：章、2：節）と、印（# と空白）の長さ・見出しの文字を返す */
+/** 行が見出しなら、その深さ（1：見出し、2：小見出し）と、印（# と空白）の長さ・見出しの文字を返す */
 export function parseHeading(line: string): { level: 1 | 2; markLen: number; text: string } | null {
   const m = HEADING.exec(line);
   if (!m) return null;
