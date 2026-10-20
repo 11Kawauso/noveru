@@ -543,7 +543,7 @@ body.is-writing .demo-banner {
   min-height: 0;
 }
 
-/* 紙の右側：縦に長いスクロールバー（細い線の上を丸いつまみが動く） */
+/* 紙の右側：縦に長いスクロールバー（細い線の上を丸いつまみが動く）。縦書きの本では紙の下に横向き */
 .vscroll {
   position: absolute;
   top: 20px;
@@ -615,6 +615,61 @@ body.is-writing .demo-banner {
 .vscroll-thumb:hover .vscroll-tip,
 .vscroll.is-dragging .vscroll-tip {
   opacity: 1;
+}
+
+/* 縦書きの本：紙を本と同じく右から左へ横に並べる（右が始まり。スクロールする入れ物ごと右からにする） */
+.writer-scroll.is-vertical {
+  direction: rtl;
+}
+
+.page-stack.is-vertical {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.page-stack.is-vertical > * {
+  direction: ltr;
+}
+
+/* 縦書きのときのスクロールバー：紙の下に横向き（右下の拡大縮小の左） */
+.vscroll.is-x {
+  top: auto;
+  right: 160px;
+  bottom: 22px;
+  left: 20px;
+  width: auto;
+  height: 18px;
+}
+
+.vscroll.is-x .vscroll-line {
+  top: 50%;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: auto;
+  height: 2px;
+  margin: -1px 0 0;
+}
+
+.vscroll.is-x .vscroll-thumb {
+  top: 50%;
+  left: 0;
+  height: 8px;
+  margin: -4px 0 0;
+}
+
+.vscroll.is-x:hover .vscroll-thumb,
+.vscroll.is-x.is-dragging .vscroll-thumb {
+  height: 10px;
+  margin: -5px 0 0;
+}
+
+.vscroll.is-x .vscroll-tip {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* 紙の右下：拡大縮小 */

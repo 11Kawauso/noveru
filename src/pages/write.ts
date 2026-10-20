@@ -341,10 +341,16 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   // 拡大縮小：紙をまるごと大きく／小さくする（1行の字数は変わらない）。
   // 画面がせまくて紙が入らないときは、入る大きさまで小さくしてから倍率をかける
+  // 縦書きは紙が横に並ぶので、高さも入るようにする（上下にもスクロールしなくていいように）
   const applyZoom = () => {
-    const pageW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--page-w")) || 440;
-    const room = scroller.clientWidth - 32;
-    const fit = room > 0 ? Math.min(1, room / pageW) : 1;
+    const root = getComputedStyle(document.documentElement);
+    const pageW = parseFloat(root.getPropertyValue("--page-w")) || 440;
+    const pageH = parseFloat(root.getPropertyValue("--page-h")) || 624;
+    const roomW = scroller.clientWidth - 32;
+    // 上下の余白・ページの番号・下のスクロールバーの分をのぞいた高さ
+    const roomH = scroller.clientHeight - 150;
+    let fit = roomW > 0 ? Math.min(1, roomW / pageW) : 1;
+    if (vertical && roomH > 0) fit = Math.min(fit, roomH / pageH);
     editor.setZoom(getZoom() * fit);
   };
   const stopZoom = onZoomChange(applyZoom);
@@ -601,6 +607,8 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     document.body.prepend(panel);
     document.body.append(outline.el, pagesPanel.el);
     document.body.classList.add("is-writing");
+    // 縦書きは紙が右から左へ並ぶので、スクロールバーも横にする
+    scrollbar.setAxis(vertical ? "x" : "y");
     applyZoom();
     writer.classList.add("is-loading");
     editor.load(data.body, data.vertical).then(() => {

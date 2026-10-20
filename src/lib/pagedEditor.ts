@@ -136,11 +136,25 @@ export function createPagedEditor(opts: {
   let autoScrollUntil = 0;
   const autoScroll = () => (autoScrollUntil = performance.now() + 250);
 
-  /** カーソルの行が見えるようにスクロールする（force なら、見えていても画面の上から3割の所へ） */
+  /**
+   * カーソルの行が見えるようにスクロールする（force なら、見えていても画面の上から3割の所へ。
+   * 縦書きは紙が右から左へ並ぶので、右から3割の所へ）
+   */
   const showCaret = (p: BodyPage, force: boolean) => {
     const r = caretRect(p.ta, p.ta.selectionStart);
     const box = scroller.getBoundingClientRect();
     const margin = 40;
+    if (vertical) {
+      if (force || r.left < box.left + margin || r.right > box.right - margin) {
+        autoScroll();
+        scroller.scrollBy({ left: r.right - (box.right - box.width * 0.3) });
+      }
+      if (r.top < box.top || r.bottom > box.bottom) {
+        autoScroll();
+        scroller.scrollBy({ top: r.top - (box.top + box.height / 2) });
+      }
+      return;
+    }
     if (force || r.top < box.top + margin || r.bottom > box.bottom - margin) {
       autoScroll();
       scroller.scrollBy({ top: r.top - (box.top + box.height * 0.3) });
@@ -229,7 +243,8 @@ export function createPagedEditor(opts: {
 
   /**
    * スクロールしたとき：画面の真ん中あたりにあるページを、いまのページにする。
-   * ただし、書いているページ（カーソルのあるページ）が見えているあいだは、そのページのまま
+   * ただし、書いているページ（カーソルのあるページ）が見えているあいだは、そのページのまま。
+   * 横書きは紙が上から下へ、縦書きは右から左へ並ぶ
    */
   const onScroll = () => {
     if (performance.now() < autoScrollUntil) return;
@@ -237,23 +252,38 @@ export function createPagedEditor(opts: {
     const fp = focusedPage();
     if (fp) {
       const r = fp.wrap.getBoundingClientRect();
-      if (r.bottom > box.top && r.top < box.bottom) {
+      const seen = vertical ? r.right > box.left && r.left < box.right : r.bottom > box.top && r.top < box.bottom;
+      if (seen) {
         const index = pages.indexOf(fp) + 2;
         if (index !== current) setCurrent(index);
         return;
       }
     }
-    const line = box.top + box.height * 0.4;
+    // この線より手前（横書きは上、縦書きは右）から始まっている、いちばん後ろのページ
+    const line = vertical ? box.right - box.width * 0.4 : box.top + box.height * 0.4;
+    const started = (w: HTMLElement) => {
+      const r = w.getBoundingClientRect();
+      return vertical ? r.right >= line : r.top <= line;
+    };
     let lo = 0;
     let hi = pages.length + 1;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
       const w = wrapAt(mid);
-      if (w && w.getBoundingClientRect().top <= line) lo = mid;
+      if (w && started(w)) lo = mid;
       else hi = mid - 1;
     }
     if (lo !== current) setCurrent(lo);
   };
+
+  // 縦書きは紙が横に並ぶので、マウスのホイール（上下）で左右に動けるようにする（下に回すと先＝左へ）
+  const onWheel = (e: WheelEvent) => {
+    if (!vertical || e.shiftKey || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    if (scroller.scrollWidth <= scroller.clientWidth + 1) return;
+    e.preventDefault();
+    scroller.scrollBy({ left: -e.deltaY });
+  };
+  scroller.addEventListener("wheel", onWheel, { passive: false });
   let scrollFrame = 0;
   const onScrollThrottled = () => {
     cancelAnimationFrame(scrollFrame);
@@ -277,8 +307,11 @@ export function createPagedEditor(opts: {
     const w = wrapAt(index);
     if (!w) return;
     const box = scroller.getBoundingClientRect();
+    const r = w.getBoundingClientRect();
     autoScroll();
-    scroller.scrollBy({ top: w.getBoundingClientRect().top - box.top - 16 });
+    // 縦書きは、そのページの右の端が、見えている所の右の端に来るように
+    if (vertical) scroller.scrollBy({ left: r.right - (box.right - 24) });
+    else scroller.scrollBy({ top: r.top - box.top - 16 });
   };
 
   return {
@@ -287,6 +320,8 @@ export function createPagedEditor(opts: {
     async load(body: string, v: boolean) {
       vertical = v;
       el.classList.toggle("is-vertical", v);
+      // 縦書きは紙を右から左へ並べる（右が始まりになるように、スクロールする入れ物ごと右からにする）
+      scroller.classList.toggle("is-vertical", v);
       drawTitle();
       await loadFonts(opts.title().title + opts.title().author + body);
       if (destroyed) return;
@@ -399,6 +434,7 @@ export function createPagedEditor(opts: {
       destroyed = true;
       cancelAnimationFrame(scrollFrame);
       scroller.removeEventListener("scroll", onScrollThrottled);
+      scroller.removeEventListener("wheel", onWheel);
       document.removeEventListener("selectionchange", onSelection);
     },
   };
