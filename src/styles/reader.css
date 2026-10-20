@@ -49,6 +49,8 @@
 .reader.measuring .page {
   position: static;
   transform: none;
+  /* 中を何度も書き換えて測るので、ほかの場所（書く画面のたくさんのページなど）の計算まで巻き込まないようにする */
+  contain: strict;
 }
 
 .page-content {
@@ -64,7 +66,8 @@
 }
 
 .reader.is-vertical .page-content,
-.page-thumbs.is-vertical .page-content {
+.page-thumbs.is-vertical .page-content,
+.page-stack.is-vertical .page-content {
   writing-mode: vertical-rl;
   text-orientation: mixed;
 }
@@ -131,7 +134,8 @@
 }
 
 .reader.is-vertical .title-page,
-.page-thumbs.is-vertical .title-page {
+.page-thumbs.is-vertical .title-page,
+.page-stack.is-vertical .title-page {
   padding: 1em 0;
 }
 

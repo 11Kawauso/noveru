@@ -14,7 +14,9 @@ export interface ReadableBook {
 }
 
 // ページの先頭に来てはいけない文字（句読点や閉じかっこ）
-const NO_LINE_START = new Set(Array.from("、。，．,.・：；？！?!ー）」』】〕〉》”’)]}ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々…‥"));
+const NO_LINE_START = new Set(
+  Array.from("、。，．,.・：；？！?!ー）」』】〕〉》”’)]}ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ々…‥"),
+);
 // ページの最後に来てはいけない文字（開きかっこ）
 const NO_LINE_END = new Set(Array.from("「『（【〔〈《“‘([{"));
 
@@ -44,97 +46,120 @@ export interface PageInfo {
   start: number;
 }
 
-/** 本文をページごとの HTML に分ける。measure は実際のページと同じ大きさの入れ物 */
-function paginate(measure: HTMLElement, paragraphs: Paragraph[], vertical: boolean): PageInfo[] {
+/** paginate を途中でやめるときの印 */
+const STOP = Symbol("stop");
+
+/**
+ * 本文をページごとの HTML に分ける。measure は実際のページと同じ大きさの入れ物。
+ * stop を渡すと、2ページ目より後で「ここから始まるページ」が stop に合ったところでやめて、その位置を返す
+ * （書く画面で、前に区切った結果と同じになるところから先は計算し直さないため）。
+ */
+function paginate(
+  measure: HTMLElement,
+  paragraphs: Paragraph[],
+  vertical: boolean,
+  stop?: (start: number) => boolean,
+): { pages: PageInfo[]; stoppedAt?: number } {
   const pages: PageInfo[] = [];
   let pageStart = 0;
   const fits = () =>
-    vertical
-      ? measure.scrollWidth <= measure.clientWidth + 1
-      : measure.scrollHeight <= measure.clientHeight + 1;
+    vertical ? measure.scrollWidth <= measure.clientWidth + 1 : measure.scrollHeight <= measure.clientHeight + 1;
   const pushPage = () => {
     pages.push({ html: measure.innerHTML, start: pageStart });
     measure.replaceChildren();
   };
   /** 段落をページに足す（ページの最初のものなら、そこをページの始まりにする） */
   const add = (p: HTMLElement, at: number) => {
-    if (!measure.firstChild) pageStart = at;
+    if (!measure.firstChild) {
+      pageStart = at;
+      if (pages.length && stop?.(at)) throw STOP;
+    }
     measure.append(p);
   };
 
   measure.replaceChildren();
-  for (const para of paragraphs) {
-    const { tokens } = para;
-    if (tokens.length === 0) {
-      // 空行。ページの先頭に来る空行は省く
-      if (!measure.firstChild) continue;
-      const p = document.createElement("p");
-      p.innerHTML = "<br>";
-      add(p, para.start);
-      if (!fits()) {
-        p.remove();
-        pushPage();
-      }
-      continue;
-    }
-
-    if (para.heading) {
-      // 見出しは分けない。章は新しいページから始める
-      if (para.heading === 1 && measure.firstChild) pushPage();
-      const p = document.createElement("p");
-      p.className = `heading heading-${para.heading}`;
-      p.innerHTML = joinTokens(tokens, 0, tokens.length);
-      add(p, para.start);
-      if (!fits() && measure.childElementCount > 1) {
-        p.remove();
-        pushPage();
-        add(p, para.start);
-      }
-      continue;
-    }
-
-    let start = 0;
-    while (start < tokens.length) {
-      const p = document.createElement("p");
-      add(p, para.offsets[start]);
-      p.innerHTML = joinTokens(tokens, start, tokens.length);
-      if (fits()) break;
-
-      // このページに入るぎりぎりの文字数を探す
-      let lo = 0;
-      let hi = tokens.length - start - 1;
-      while (lo < hi) {
-        const mid = Math.ceil((lo + hi) / 2);
-        p.innerHTML = joinTokens(tokens, start, start + mid);
-        if (fits()) lo = mid;
-        else hi = mid - 1;
-      }
-      // 句読点などが次のページの先頭に、開きかっこがこのページの最後に来ないようにする
-      while (
-        lo > 1 &&
-        (NO_LINE_START.has(tokens[start + lo]?.ch ?? "") || NO_LINE_END.has(tokens[start + lo - 1]?.ch ?? ""))
-      ) {
-        lo--;
-      }
-
-      if (lo === 0) {
-        if (measure.childElementCount > 1) {
-          p.remove();
-          pushPage();
-          continue;
-        }
-        lo = 1; // 1文字も入らないときでも先に進む
-      }
-      p.innerHTML = joinTokens(tokens, start, start + lo);
-      // 段落の途中でページが変わるので、このページの最後の行も行末までそろえる
-      p.className = "split";
-      pushPage();
-      start += lo;
-    }
+  try {
+    paginateInto(paragraphs);
+  } catch (e) {
+    if (e !== STOP) throw e;
+    measure.replaceChildren();
+    return { pages, stoppedAt: pageStart };
   }
   if (measure.firstChild) pushPage();
   if (pages.length === 0) pages.push({ html: "", start: 0 });
-  return pages;
+  return { pages };
+
+  function paginateInto(paragraphs: Paragraph[]) {
+    for (const para of paragraphs) {
+      const { tokens } = para;
+      if (tokens.length === 0) {
+        // 空行。ページの先頭に来る空行は省く
+        if (!measure.firstChild) continue;
+        const p = document.createElement("p");
+        p.innerHTML = "<br>";
+        add(p, para.start);
+        if (!fits()) {
+          p.remove();
+          pushPage();
+        }
+        continue;
+      }
+
+      if (para.heading) {
+        // 見出しは分けない。章は新しいページから始める
+        if (para.heading === 1 && measure.firstChild) pushPage();
+        const p = document.createElement("p");
+        p.className = `heading heading-${para.heading}`;
+        p.innerHTML = joinTokens(tokens, 0, tokens.length);
+        add(p, para.start);
+        if (!fits() && measure.childElementCount > 1) {
+          p.remove();
+          pushPage();
+          add(p, para.start);
+        }
+        continue;
+      }
+
+      let start = 0;
+      while (start < tokens.length) {
+        const p = document.createElement("p");
+        add(p, para.offsets[start]);
+        p.innerHTML = joinTokens(tokens, start, tokens.length);
+        if (fits()) break;
+
+        // このページに入るぎりぎりの文字数を探す
+        let lo = 0;
+        let hi = tokens.length - start - 1;
+        while (lo < hi) {
+          const mid = Math.ceil((lo + hi) / 2);
+          p.innerHTML = joinTokens(tokens, start, start + mid);
+          if (fits()) lo = mid;
+          else hi = mid - 1;
+        }
+        // 句読点などが次のページの先頭に、開きかっこがこのページの最後に来ないようにする
+        while (
+          lo > 1 &&
+          (NO_LINE_START.has(tokens[start + lo]?.ch ?? "") || NO_LINE_END.has(tokens[start + lo - 1]?.ch ?? ""))
+        ) {
+          lo--;
+        }
+
+        if (lo === 0) {
+          if (measure.childElementCount > 1) {
+            p.remove();
+            pushPage();
+            continue;
+          }
+          lo = 1; // 1文字も入らないときでも先に進む
+        }
+        p.innerHTML = joinTokens(tokens, start, start + lo);
+        // 段落の途中でページが変わるので、このページの最後の行も行末までそろえる
+        p.className = "split";
+        pushPage();
+        start += lo;
+      }
+    }
+  }
 }
 
 /**
@@ -150,8 +175,26 @@ export function createPaginator() {
       measurer.classList.toggle("is-vertical", book.vertical);
       return [
         { html: titlePageHtml(book), start: 0 },
-        ...paginate(measureContent, tokenizeBody(book.body), book.vertical),
+        ...paginate(measureContent, tokenizeBody(book.body), book.vertical).pages,
       ];
+    },
+    /**
+     * 本文の from 文字目（ページの始まり）から後ろだけを区切る（タイトルのページはなし）。
+     * ページの区切り方は、そこから後ろの文章だけで決まるので、前のページは計算し直さなくていい。
+     * stop（本文の中の位置で聞く）に合うページの始まりまで来たら、そこでやめて stoppedAt を返す。
+     */
+    paginateFrom(
+      body: string,
+      from: number,
+      vertical: boolean,
+      stop?: (start: number) => boolean,
+    ): { pages: PageInfo[]; stoppedAt?: number } {
+      measurer.classList.toggle("is-vertical", vertical);
+      const res = paginate(measureContent, tokenizeBody(body.slice(from)), vertical, stop && ((at) => stop(at + from)));
+      return {
+        pages: res.pages.map((p) => ({ html: p.html, start: p.start + from })),
+        stoppedAt: res.stoppedAt === undefined ? undefined : res.stoppedAt + from,
+      };
     },
     destroy() {
       measurer.remove();

@@ -1,10 +1,5 @@
 /* 書く画面 */
 
-.writer {
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
 /* ---- 書いているあいだのパネル ----
    左の細い道具のパネル・その右の目次のパネル・画面の右のページのパネル。
    左のメニューは隠す。 */
@@ -20,11 +15,6 @@
 
 body.is-writing .side-rail {
   display: none;
-}
-
-body.is-writing .page-area {
-  margin-left: calc(var(--tools-w) + var(--outline-w));
-  margin-right: var(--pages-w);
 }
 
 /* 左の細い道具のパネル */
@@ -104,21 +94,6 @@ body.is-writing .page-area {
 
 .writer-info .char-count {
   font-size: 11px;
-}
-
-/* 拡大縮小は縦に並べる（上が ＋） */
-.writer-panel .zoom {
-  flex-direction: column-reverse;
-  align-self: center;
-}
-
-.writer-panel .zoom-btn {
-  min-width: 40px;
-  min-height: 30px;
-}
-
-.writer-panel .zoom-value {
-  padding: 2px 0;
 }
 
 .writer-panel-spacer {
@@ -334,10 +309,229 @@ body.is-writing .page-area {
   font-variant-numeric: tabular-nums;
 }
 
+.char-count {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ---- 真ん中の紙（表紙・タイトルのページ・本文のページを縦に並べる） ---- */
+
+.writer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--tools-w) + var(--outline-w));
+  right: var(--pages-w);
+}
+
+/* 書いているあいだは、お試しモードのお知らせは出さない（紙の場所を広く使う） */
+body.is-writing .demo-banner {
+  display: none;
+}
+
+.writer.is-loading .page-stack {
+  opacity: 0.4;
+}
+
+.writer-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 28px 40px 96px 24px;
+}
+
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.wsheet-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 1枚の紙（大きさは読む画面のページと同じ） */
+.wsheet {
+  position: relative;
+  min-width: var(--page-w);
+  min-height: var(--page-h);
+  padding: var(--page-pad-block) var(--page-pad-inline);
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+  border-radius: 2px;
+  font-family: var(--font-body);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  color: var(--text);
+}
+
+.wsheet-title,
+.wsheet-cover {
+  width: var(--page-w);
+  height: var(--page-h);
+}
+
+.wsheet-title {
+  cursor: pointer;
+}
+
+.wsheet-cover {
+  padding: 0;
+  overflow: hidden;
+}
+
+.wsheet-cover .cover {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 2px;
+}
+
+.wsheet-num {
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 本文を書く欄（1ページに1つ）。ふだんはページの大きさで、はみ出すと少しのあいだ伸びる */
+.w-body {
+  display: block;
+  width: calc(var(--page-w) - 2 * var(--page-pad-inline));
+  min-height: calc(var(--page-h) - 2 * var(--page-pad-block));
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font: inherit;
+  line-height: inherit;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-break: strict;
+  text-align: justify;
+}
+
+.w-body::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.page-stack.is-vertical .w-body {
+  writing-mode: vertical-rl;
+  width: auto;
+  min-width: calc(var(--page-w) - 2 * var(--page-pad-inline));
+  height: calc(var(--page-h) - 2 * var(--page-pad-block));
+  min-height: 0;
+}
+
+/* 紙の右側：縦に長いスクロールバー（細い線の上を丸いつまみが動く） */
+.vscroll {
+  position: absolute;
+  top: 20px;
+  right: 12px;
+  bottom: 74px;
+  width: 18px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.vscroll.is-idle {
+  visibility: hidden;
+}
+
+.vscroll-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.vscroll-thumb {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 8px;
+  margin-left: -4px;
+  border-radius: 999px;
+  background: var(--muted);
+  opacity: 0.5;
+  transition:
+    opacity 0.15s,
+    width 0.15s,
+    margin 0.15s,
+    background 0.15s;
+}
+
+.vscroll:hover .vscroll-thumb,
+.vscroll.is-dragging .vscroll-thumb {
+  width: 10px;
+  margin-left: -5px;
+  background: var(--accent);
+  opacity: 1;
+}
+
+/* つまみの横の「いまのページ」 */
+.vscroll-tip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.vscroll-thumb:hover .vscroll-tip,
+.vscroll.is-dragging .vscroll-tip {
+  opacity: 1;
+}
+
+/* 紙の右下：拡大縮小 */
+.writer-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 16px;
+}
+
+.writer-zoom .zoom {
+  box-shadow: 0 2px 8px rgb(60 40 20 / 0.12);
+}
+
+/* ---- 画面の幅ごとの並べ方（上の決まりを上書きするので、ここに置く） ---- */
+
 /* 画面がせまいとき：ページの一覧（その次に目次）をしまって、道具のボタンで出し入れする */
 @media (max-width: 1180px) {
-  body.is-writing .page-area {
-    margin-right: 0;
+  .writer {
+    right: 0;
   }
 
   .writer-pages {
@@ -360,8 +554,8 @@ body.is-writing .page-area {
 }
 
 @media (max-width: 940px) {
-  body.is-writing .page-area {
-    margin-left: var(--tools-w);
+  .writer {
+    left: var(--tools-w);
   }
 
   .writer-outline {
@@ -386,8 +580,18 @@ body.is-writing .page-area {
 /* スマホ：道具は左のメニューと同じく上に並べる（入りきらなければ2段にして、保存ボタンが隠れないようにする）。
    目次・ページのパネルは、画面の上から下まで重ねて出す */
 @media (max-width: 700px) {
-  body.is-writing .page-area {
-    margin-left: 0;
+  /* 紙は道具の下から（道具の高さは書く画面が測って --writer-top に入れる）。スクロールは指でするので、スクロールバーは出さない */
+  .writer {
+    top: var(--writer-top, 0px);
+    left: 0;
+  }
+
+  .writer-scroll {
+    padding: 16px 8px 88px;
+  }
+
+  .vscroll {
+    display: none;
   }
 
   .writer-panel {
@@ -423,10 +627,6 @@ body.is-writing .page-area {
     margin: 0 4px;
   }
 
-  .writer-panel .zoom {
-    flex-direction: row;
-  }
-
   .writer-outline {
     left: 0;
     z-index: 20;
@@ -436,101 +636,6 @@ body.is-writing .page-area {
   .writer-pages {
     z-index: 20;
   }
-}
-
-.char-count {
-  padding: 0 4px;
-  color: var(--muted);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.char-count.over {
-  color: var(--danger);
-  font-weight: 600;
-}
-
-/* ---- 紙 ---- */
-
-.writer-scroll {
-  display: flex;
-  overflow-x: auto;
-  padding: 4px 4px 24px;
-}
-
-/* 縦書きは右から書くので、横スクロールの始まりを右端にする */
-.writer-scroll.is-vertical {
-  direction: rtl;
-}
-
-.paper {
-  /* 本文の中の場所を測るとき（caret.ts）の基準にする */
-  position: relative;
-  direction: ltr;
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  margin: 0 auto;
-  width: min(var(--page-w), 100%);
-  min-height: var(--page-h);
-  padding: var(--page-pad-block) var(--page-pad-inline);
-  background: var(--paper);
-  box-shadow: var(--page-shadow);
-  border-radius: 2px;
-  font-family: var(--font-body);
-  font-size: var(--body-size);
-  line-height: var(--body-line);
-}
-
-.paper.is-vertical {
-  writing-mode: vertical-rl;
-  width: auto;
-  min-width: min(var(--page-w), 100%);
-  height: var(--page-h);
-  min-height: 0;
-}
-
-.paper.is-loading {
-  opacity: 0.4;
-}
-
-.paper input,
-.paper textarea {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  color: var(--text);
-  outline: none;
-}
-
-.paper.is-vertical input,
-.paper.is-vertical textarea {
-  writing-mode: vertical-rl;
-  width: auto;
-  height: 100%;
-}
-
-.paper input::placeholder,
-.paper textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.7;
-}
-
-.w-body {
-  flex: 1 0 auto;
-  min-block-size: 6em;
-  resize: none;
-  overflow: hidden;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  line-break: strict;
-  text-align: justify;
 }
 
 /* ---- 保存の小窓 ---- */
@@ -572,11 +677,6 @@ body.is-writing .page-area {
 }
 
 @media (max-width: 600px) {
-  .paper {
-    --page-pad-block: 32px;
-    --page-pad-inline: 22px;
-  }
-
   .save-body {
     flex-direction: column;
   }

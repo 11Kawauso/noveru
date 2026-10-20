@@ -1,17 +1,19 @@
 // 書く画面：タイトル・作者・本文を書いて、表紙を選んで保存する
 //   書いているあいだは、左のメニューの代わりに3つのパネルを出す。
-//     左の細いパネル：書く道具（戻る・向き・字数・拡大縮小・書き方・プレビュー・保存）
+//     左の細いパネル：書く道具（戻る・向き・字数・書き方・プレビュー・保存）
 //     その右：タイトル・作者の欄と目次（writerOutline.ts）
+//     真ん中：表紙・タイトルのページ・本文のページを縦に並べた紙（pagedEditor.ts）。右側にスクロールバーと拡大縮小
 //     画面の右：表紙とページの一覧（writerPages.ts）
 //   画面がせまいときは、目次とページは道具のボタンで出し入れする。スマホでは道具は上に並ぶ。
 
 import { backLink } from "../lib/backLink";
-import { caretRect } from "../lib/caret";
 import { renderCover } from "../lib/cover";
 import { h, openDialog, toast } from "../lib/dom";
 import { compressCover } from "../lib/image";
+import { createPagedEditor } from "../lib/pagedEditor";
 import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
 import { createReader } from "../lib/reader";
+import { createScrollbar } from "../lib/scrollbar";
 import { withScrollThumb } from "../lib/scrollThumb";
 import { MAX_TAGS, parseTags, renderTagChips, tagsToText } from "../lib/tags";
 import { createOutlinePanel } from "../lib/writerOutline";
@@ -71,47 +73,53 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   const title = h("input", { type: "text", placeholder: "タイトル", maxlength: 100 });
   const author = h("input", { type: "text", placeholder: "作者", maxlength: 60 });
-  const body = h("textarea", { class: "w-body", placeholder: "ここから本文を書きます", spellcheck: false });
-  const paper = h("div", { class: "paper" }, body);
-  const scroller = h("div", { class: "writer-scroll" }, paper);
+  const scroller = h("div", { class: "writer-scroll" });
   const count = h("span", { class: "char-count" });
 
   // 書く向きは新しく書くときに決めて、あとからは変えられない（表示だけ）
   const dirBadge = h("span", { class: "dir-badge", title: "書く向きは、新しく書くときに決めます" });
 
-  /** 本文の pos 文字目へ飛んで、そこにカーソルを置く */
+  /** いまのページ（0：表紙、1：タイトル、2〜：本文） */
+  let currentPage = 0;
+
+  const editor = createPagedEditor({
+    scroller,
+    title: () => ({ title: title.value, author: author.value }),
+    meta: () => currentMeta(cover),
+    onChange: () => {
+      drawCount();
+      outline.update();
+    },
+    onPages: (pages, from) => {
+      pagesPanel.setPages(pages, from, vertical);
+      scrollbar.update();
+    },
+    onCurrent: (index, caret) => {
+      currentPage = index;
+      pagesPanel.markCurrent(index);
+      outline.markCurrent(caret);
+    },
+    onTitleClick: () => {
+      // 目次のパネルをしまっているときは出してから
+      if (getComputedStyle(outline.el).visibility === "hidden") toggleDrawer(outline.el);
+      title.focus();
+    },
+  });
+  scroller.append(editor.el);
+
+  /** 本文の pos 文字目へ飛ぶ（目次から） */
   const jumpTo = (pos: number) => {
     closeDrawers();
-    pos = Math.max(0, Math.min(pos, body.value.length));
-    body.focus({ preventScroll: true });
-    body.setSelectionRange(pos, pos);
-    const r = caretRect(body, pos);
-    if (vertical) {
-      // その行が、見えている範囲の右寄りに来るようにする
-      const box = scroller.getBoundingClientRect();
-      scroller.scrollBy({ left: r.right - (box.right - box.width * 0.2) });
-    } else {
-      window.scrollBy({ top: r.top - window.innerHeight * 0.3 });
-    }
-    markCurrent();
+    editor.jumpTo(pos);
   };
-  /** 書き始め（本文の先頭）へ */
-  const jumpToStart = () => {
+  /** そのページへ飛ぶ（ページの一覧から） */
+  const jumpToPage = (index: number) => {
     closeDrawers();
-    if (vertical) scroller.scrollLeft = scroller.scrollWidth;
-    window.scrollTo({ top: 0 });
-    body.focus({ preventScroll: true });
-    body.setSelectionRange(0, 0);
-    markCurrent();
+    editor.jumpToPage(index);
   };
 
-  const outline = createOutlinePanel({ title, author, body, jump: jumpTo });
-  const pagesPanel = createPagesPanel({
-    book: () => ({ title: title.value, author: author.value, body: body.value, vertical }),
-    meta: () => currentMeta(cover),
-    jump: jumpTo,
-    jumpToStart,
-  });
+  const outline = createOutlinePanel({ title, author, editor, jump: jumpTo });
+  const pagesPanel = createPagesPanel({ meta: () => currentMeta(cover), jumpToPage });
 
   /** 画面がせまいときに、目次・ページのパネルを出し入れする */
   const toggleDrawer = (el: HTMLElement) => {
@@ -124,14 +132,6 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     pagesPanel.el.classList.remove("is-open");
   };
 
-  /** カーソルのある場所に合わせて、目次の章・節と、ページの一覧のいまの場所を目立たせる */
-  const markCurrent = () => {
-    const active = document.activeElement;
-    const pos = active === title || active === author ? null : body.selectionStart;
-    outline.markCurrent(pos);
-    pagesPanel.markCurrent(pos);
-  };
-
   const back = backLink("/write", "tool-btn");
   back?.replaceChildren(toolIcon("back"), h("span", { class: "tool-label" }, "戻る"));
 
@@ -140,7 +140,6 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     { class: "writer-panel", "aria-label": "書く道具" },
     back,
     h("div", { class: "writer-info" }, dirBadge, count),
-    createZoomControl(),
     toolButton("outline", "目次", () => toggleDrawer(outline.el), "drawer-toggle outline-toggle"),
     toolButton("pages", "ページ", () => toggleDrawer(pagesPanel.el), "drawer-toggle pages-toggle"),
     h("div", { class: "writer-panel-spacer" }),
@@ -149,21 +148,36 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     toolButton("save", "保存", () => openSaveDialog(), "is-primary"),
   );
 
-  const writer = h("div", { class: "writer", hidden: !bookId }, scroller);
+  // 紙の右側：縦に長いスクロールバーと、その下（右下）に拡大縮小
+  const scrollbar = createScrollbar(scroller, {
+    label: () => {
+      const total = editor.readerPages().length;
+      return currentPage === 0 ? "表紙" : `${currentPage} / ${total}`;
+    },
+  });
+  const writer = h(
+    "div",
+    { class: "writer", hidden: !bookId },
+    scroller,
+    scrollbar.el,
+    h("div", { class: "writer-zoom" }, createZoomControl()),
+  );
   app.append(writer);
   writer.addEventListener("pointerdown", closeDrawers);
 
-  body.addEventListener("input", () => {
-    outline.update();
-    pagesPanel.schedule();
-    markCurrent();
-  });
   for (const field of [title, author]) {
-    field.addEventListener("input", () => pagesPanel.refreshTitle());
-    field.addEventListener("focus", markCurrent);
+    field.addEventListener("input", () => editor.refreshTitle());
+    field.addEventListener("focus", () => {
+      outline.markCurrent(null);
+      pagesPanel.markCurrent(1);
+    });
   }
-  const onSelection = () => document.activeElement === body && markCurrent();
-  document.addEventListener("selectionchange", onSelection);
+
+  // スマホでは書く道具が上に並ぶので、紙はその下から（道具の高さは、2段になったりして変わる）
+  const panelObserver = new ResizeObserver(() =>
+    document.body.style.setProperty("--writer-top", `${panel.offsetHeight}px`),
+  );
+  panelObserver.observe(panel);
 
   /** 表紙を描くための、いまの本の情報 */
   const currentMeta = (coverImage: string | null): BookMeta => ({
@@ -184,7 +198,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   });
 
   const snapshot = () =>
-    JSON.stringify([title.value, titleReading, tags, synopsis, author.value, body.value, vertical, cover]);
+    JSON.stringify([title.value, titleReading, tags, synopsis, author.value, editor.getBody(), vertical, cover]);
   const isClean = () => !started || snapshot() === saved;
   const input = (): BookInput => ({
     title: title.value.trim(),
@@ -192,59 +206,27 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     tags,
     synopsis: synopsis.trim(),
     author: author.value.trim(),
-    body: body.value,
+    body: editor.getBody(),
     vertical,
     cover,
   });
 
-  /** 本文の量に合わせて紙を伸ばす（縦書きは横へ、横書きは下へ） */
-  const grow = () => {
-    if (vertical) {
-      body.style.height = "";
-      body.style.width = "0px";
-      body.style.width = `${body.scrollWidth}px`;
-    } else {
-      body.style.width = "";
-      body.style.height = "0px";
-      body.style.height = `${body.scrollHeight}px`;
-    }
-    const n = body.value.replace(/\n/g, "").length;
+  const drawCount = () => {
+    const n = editor.getBody().replace(/\n/g, "").length;
     count.textContent = `${n.toLocaleString()}字`;
     count.classList.toggle("over", n > MAX_CHARS);
   };
 
-  const setDirection = (v: boolean) => {
-    vertical = v;
-    paper.classList.toggle("is-vertical", v);
-    scroller.classList.toggle("is-vertical", v);
-    dirBadge.textContent = v ? "縦書き" : "横書き";
-    grow();
-    // 縦書きは右端（書き始め）が見えるようにする
-    scroller.scrollLeft = v ? scroller.scrollWidth : 0;
-  };
-
-  body.addEventListener("input", grow);
-
-  // 縦書きの紙は横に伸びるので、マウスのホイール（上下）で左右に動けるようにする
-  // （スクロールバーを出していないため）。下に回すと先（左）へ進む
-  scroller.addEventListener(
-    "wheel",
-    (e) => {
-      if (!vertical || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      if (scroller.scrollWidth <= scroller.clientWidth) return;
-      e.preventDefault();
-      scroller.scrollLeft -= e.deltaY;
-    },
-    { passive: false },
-  );
-  window.addEventListener("resize", grow);
-  // 拡大縮小：紙をまるごと大きく／小さくする（1行の字数は変わらない）
+  // 拡大縮小：紙をまるごと大きく／小さくする（1行の字数は変わらない）。
+  // 画面がせまくて紙が入らないときは、入る大きさまで小さくしてから倍率をかける
   const applyZoom = () => {
-    paper.style.zoom = String(getZoom());
-    grow();
+    const pageW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--page-w")) || 440;
+    const room = scroller.clientWidth - 32;
+    const fit = room > 0 ? Math.min(1, room / pageW) : 1;
+    editor.setZoom(getZoom() * fit);
   };
   const stopZoom = onZoomChange(applyZoom);
-  applyZoom();
+  window.addEventListener("resize", applyZoom);
 
   const save = async (): Promise<boolean> => {
     if (saving) return false;
@@ -340,7 +322,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           saveBtn.disabled = false;
           if (ok) {
             close();
-            pagesPanel.refreshTitle(); // 表紙が変わったかもしれないので
+            editor.refreshTitle(); // 表紙が変わったかもしれないので
           } else {
             cover = prevCover;
             titleReading = prevReading;
@@ -465,30 +447,33 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     tags = data.tags;
     synopsis = data.synopsis;
     author.value = data.author;
-    body.value = data.body;
     cover = data.cover;
+    vertical = data.vertical;
+    dirBadge.textContent = vertical ? "縦書き" : "横書き";
     writer.hidden = false;
     // 左のメニューを隠して、書く道具・目次・ページのパネルを出す（スマホでは道具が上に出るので、ページの一番前に置く）
     document.body.prepend(panel);
     document.body.append(outline.el, pagesPanel.el);
     document.body.classList.add("is-writing");
-    setDirection(data.vertical);
+    applyZoom();
+    writer.classList.add("is-loading");
+    const loading = editor.load(data.body, data.vertical);
     started = true;
     saved = snapshot();
+    drawCount();
     outline.update();
-    pagesPanel.schedule();
-    // タイトルがまだなければタイトルの欄から（目次のパネルをしまっているときは本文から）
-    if (!data.title) title.focus({ preventScroll: true });
-    if (document.activeElement !== title) body.focus({ preventScroll: true });
-    markCurrent();
+    loading.then(() => {
+      writer.classList.remove("is-loading");
+      // タイトルがまだなければタイトルの欄から（目次のパネルをしまっているときは本文の最初から）
+      if (!data.title) title.focus({ preventScroll: true });
+      if (document.activeElement !== title) editor.jumpToPage(2);
+    });
   };
 
   if (bookId) {
-    paper.classList.add("is-loading");
     store
       .getBook(user.uid, bookId)
       .then((b) => {
-        paper.classList.remove("is-loading");
         if (!b) {
           toast("本が見つかりませんでした。");
           navigate("/");
@@ -514,7 +499,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
         },
         h("div", { class: `dir-sample ${v ? "is-vertical" : "is-horizontal"}`, "aria-hidden": "true" }),
         h("strong", {}, v ? "縦書き" : "横書き"),
-        h("span", {}, v ? "右から左へ書きます。紙は横に伸びます。" : "上から下へ書きます。紙は下に伸びます。"),
+        h("span", {}, v ? "文字は上から下へ、行は右から左へ書きます。" : "文字は左から右へ、行は上から下へ書きます。"),
       );
     const chooser = h(
       "div",
@@ -529,11 +514,13 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
 
   return () => {
     document.removeEventListener("keydown", onKey);
-    window.removeEventListener("resize", grow);
+    window.removeEventListener("resize", applyZoom);
     stopZoom();
     closePreview?.();
-    document.removeEventListener("selectionchange", onSelection);
-    pagesPanel.destroy();
+    editor.destroy();
+    scrollbar.destroy();
+    panelObserver.disconnect();
+    document.body.style.removeProperty("--writer-top");
     panel.remove();
     outline.el.remove();
     pagesPanel.el.remove();

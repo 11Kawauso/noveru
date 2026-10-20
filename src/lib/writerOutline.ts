@@ -44,11 +44,16 @@ export interface OutlinePanel {
 export function createOutlinePanel(opts: {
   title: HTMLInputElement;
   author: HTMLInputElement;
-  body: HTMLTextAreaElement;
+  /** 真ん中の紙（本文を読んだり書き換えたりする） */
+  editor: {
+    getBody(): string;
+    caret(): number | null;
+    replace(from: number, to: number, text: string, caretAt: number): void;
+  };
   /** 本文の pos 文字目へ飛ぶ */
   jump: (pos: number) => void;
 }): OutlinePanel {
-  const { body } = opts;
+  const { editor } = opts;
   let headings: Heading[] = [];
   let lastKey = "";
 
@@ -61,21 +66,17 @@ export function createOutlinePanel(opts: {
 
   /** カーソルのある行を、章（または節）の見出しにする。もう一度押すと、ふつうの行に戻す */
   const markLine = (level: 1 | 2) => {
-    const v = body.value;
-    const pos = body.selectionStart;
+    const pos = editor.caret();
+    if (pos === null) return; // 本文にカーソルがないとき
+    const v = editor.getBody();
     const lineStart = v.lastIndexOf("\n", pos - 1) + 1;
     const lineEndAt = v.indexOf("\n", pos);
     const line = v.slice(lineStart, lineEndAt < 0 ? v.length : lineEndAt);
     const oldMark = /^[#＃]{1,2}[ 　\t]*/.exec(line)?.[0] ?? "";
     const mark = parseHeading(line)?.level === level ? "" : level === 1 ? "# " : "## ";
-    body.focus();
-    body.setSelectionRange(lineStart, lineStart + oldMark.length);
-    // execCommand を使うと、Ctrl + Z で元に戻せる
-    const done = mark ? document.execCommand("insertText", false, mark) : !oldMark || document.execCommand("delete");
-    if (!done) {
-      body.setRangeText(mark, lineStart, lineStart + oldMark.length, "end");
-      body.dispatchEvent(new Event("input"));
-    }
+    // カーソルは、同じ文字の所に残す（印の中にあったときは、印のすぐあとへ）
+    const caretAt = Math.max(lineStart + mark.length, pos + mark.length - oldMark.length);
+    editor.replace(lineStart, lineStart + oldMark.length, mark, caretAt);
   };
 
   const markBtn = (level: 1 | 2, label: string) =>
@@ -109,7 +110,7 @@ export function createOutlinePanel(opts: {
   );
 
   const update = () => {
-    const next = readHeadings(body.value);
+    const next = readHeadings(editor.getBody());
     // 見出しが変わっていなければ作り直さない（場所だけ入れ替える）
     const key = next.map((x) => `${x.level}${x.text}`).join("\n");
     headings = next;
