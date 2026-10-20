@@ -5,11 +5,29 @@
   margin: 0 auto;
 }
 
-/* 書いているあいだは、左のメニューの代わりに書く道具を出す */
+/* ---- 書いているあいだのパネル ----
+   左の細い道具のパネル・その右の目次のパネル・画面の右のページのパネル。
+   左のメニューは隠す。 */
+
+:root {
+  --tools-w: 76px;
+  --outline-w: 232px;
+  --pages-w: 164px;
+  /* ページの一覧の、小さいページの幅（ページは 440px なので、その割合で縮める） */
+  --thumb-w: 112px;
+  --thumb-scale: calc(112 / 440);
+}
+
 body.is-writing .side-rail {
   display: none;
 }
 
+body.is-writing .page-area {
+  margin-left: calc(var(--tools-w) + var(--outline-w));
+  margin-right: var(--pages-w);
+}
+
+/* 左の細い道具のパネル */
 .writer-panel {
   position: fixed;
   top: 0;
@@ -18,48 +36,369 @@ body.is-writing .side-rail {
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: var(--rail-w);
-  padding: 22px 14px 16px;
+  align-items: stretch;
+  gap: 6px;
+  width: var(--tools-w);
+  padding: 12px 6px;
   background: var(--bg);
   border-right: 1px solid var(--border);
   overflow-y: auto;
 }
 
-.writer-panel .rail-logo {
-  margin-bottom: 14px;
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 2px 6px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
-.writer-panel .btn {
-  width: 100%;
+.tool-btn:hover {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.tool-btn.is-primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.tool-btn.is-primary:hover {
+  filter: brightness(1.08);
+}
+
+.tool-icon svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.tool-label {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .writer-info {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 4px;
+  margin: 6px 0;
 }
 
+.writer-info .dir-badge {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.writer-info .char-count {
+  font-size: 11px;
+}
+
+/* 拡大縮小は縦に並べる（上が ＋） */
 .writer-panel .zoom {
+  flex-direction: column-reverse;
   align-self: center;
+}
+
+.writer-panel .zoom-btn {
+  min-width: 40px;
+  min-height: 30px;
+}
+
+.writer-panel .zoom-value {
+  padding: 2px 0;
 }
 
 .writer-panel-spacer {
   flex: 1;
 }
 
-/* スマホ：左のメニューと同じく上に並べる（入りきらなければ2段にして、保存ボタンが隠れないようにする） */
+/* 目次・ページのボタンは、画面がせまくてパネルをしまっているときだけ出す */
+.drawer-toggle {
+  display: none;
+}
+
+/* その右：タイトル・作者と目次 */
+.writer-outline {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--tools-w);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: var(--outline-w);
+  padding: 18px 16px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.outline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outline-field span,
+.outline-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.outline-field input {
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  font-family: var(--font-body);
+}
+
+.outline-field input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.outline-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.outline-label {
+  flex: 1;
+}
+
+.outline-mark {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.outline-mark:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.outline-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outline-item button {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outline-item.level-2 button {
+  padding-left: 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.outline-item button:hover {
+  background: var(--paper);
+}
+
+.outline-item.is-current button {
+  background: var(--paper);
+  color: var(--accent);
+}
+
+.outline-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* 画面の右：表紙とページの一覧 */
+.writer-pages {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  width: var(--pages-w);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+}
+
+.page-thumbs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  overflow-y: auto;
+}
+
+.page-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  /* 見えていないページは描かない（ページが多くても重くならないように） */
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--thumb-w) auto calc(var(--thumb-w) * 624 / 440 + 24px);
+}
+
+.page-thumb-frame {
+  position: relative;
+  width: var(--thumb-w);
+  aspect-ratio: 440 / 624;
+  overflow: hidden;
+  border-radius: 2px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.15s;
+}
+
+.page-thumb:hover .page-thumb-frame {
+  outline-color: var(--border);
+}
+
+.page-thumb.is-current .page-thumb-frame {
+  outline-color: var(--accent);
+}
+
+.page-thumb .page {
+  transform: scale(var(--thumb-scale));
+  box-shadow: 0 1px 4px rgb(60 40 20 / 0.18);
+  pointer-events: none;
+}
+
+.page-thumb .cover {
+  width: 100%;
+  height: 100%;
+}
+
+.page-thumb-num {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-thumb.is-current .page-thumb-num {
+  color: var(--accent);
+}
+
+.page-count {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 画面がせまいとき：ページの一覧（その次に目次）をしまって、道具のボタンで出し入れする */
+@media (max-width: 1180px) {
+  body.is-writing .page-area {
+    margin-right: 0;
+  }
+
+  .writer-pages {
+    visibility: hidden;
+    transform: translateX(100%);
+    transition:
+      transform 0.2s,
+      visibility 0.2s;
+  }
+
+  .writer-pages.is-open {
+    visibility: visible;
+    transform: none;
+    box-shadow: var(--page-shadow);
+  }
+
+  .pages-toggle {
+    display: flex;
+  }
+}
+
+@media (max-width: 940px) {
+  body.is-writing .page-area {
+    margin-left: var(--tools-w);
+  }
+
+  .writer-outline {
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 0.2s,
+      visibility 0.2s;
+  }
+
+  .writer-outline.is-open {
+    visibility: visible;
+    transform: none;
+    box-shadow: var(--page-shadow);
+  }
+
+  .outline-toggle {
+    display: flex;
+  }
+}
+
+/* スマホ：道具は左のメニューと同じく上に並べる（入りきらなければ2段にして、保存ボタンが隠れないようにする）。
+   目次・ページのパネルは、画面の上から下まで重ねて出す */
 @media (max-width: 700px) {
+  body.is-writing .page-area {
+    margin-left: 0;
+  }
+
   .writer-panel {
     position: sticky;
     bottom: auto;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
     width: auto;
-    padding: 8px 12px;
+    padding: 4px 8px;
     border-right: none;
     border-bottom: 1px solid var(--border);
     overflow: visible;
@@ -69,18 +408,33 @@ body.is-writing .side-rail {
     flex: none;
   }
 
-  .writer-panel .rail-logo {
-    display: none;
-  }
-
-  .writer-panel .btn {
-    width: auto;
-    min-height: 34px;
-    padding: 0 10px;
-  }
-
   .writer-panel > .writer-panel-spacer {
     flex: 1;
+  }
+
+  .tool-btn {
+    width: auto;
+    min-width: 48px;
+    padding: 5px 6px 3px;
+  }
+
+  .writer-info {
+    flex-direction: row;
+    margin: 0 4px;
+  }
+
+  .writer-panel .zoom {
+    flex-direction: row;
+  }
+
+  .writer-outline {
+    left: 0;
+    z-index: 20;
+    width: min(300px, 85vw);
+  }
+
+  .writer-pages {
+    z-index: 20;
   }
 }
 
@@ -110,6 +464,8 @@ body.is-writing .side-rail {
 }
 
 .paper {
+  /* 本文の中の場所を測るとき（caret.ts）の基準にする */
+  position: relative;
   direction: ltr;
   flex: none;
   display: flex;
@@ -164,24 +520,6 @@ body.is-writing .side-rail {
 .paper textarea::placeholder {
   color: var(--muted);
   opacity: 0.7;
-}
-
-.w-title {
-  flex: none;
-  block-size: 2.4em;
-  font-size: 1.5em !important;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  border-block-end: 1px dashed var(--border) !important;
-}
-
-.w-author {
-  flex: none;
-  block-size: 2.2em;
-  margin-block: 0.4em 1.6em !important;
-  text-align: end;
-  color: var(--muted) !important;
-  border-block-end: 1px dashed var(--border) !important;
 }
 
 .w-body {

@@ -4,6 +4,8 @@
 //   漢字《かんじ》    → 直前の漢字のまとまりにふりがな
 //   《《強調》》      → 強調 に傍点
 //   |《              → 《 をそのまま表示したいとき
+//   # 見出し         → 章の見出し（行の先頭。全角の ＃ でもいい）。読む画面では章は新しいページから始まる
+//   ## 見出し        → 節の見出し
 
 import { escapeHtml } from "./dom";
 
@@ -15,6 +17,19 @@ export interface Token {
   html: string;
   /** ふつうの1文字のとき、その文字 */
   ch?: string;
+  /** 元の文章で何文字分か（ふりがなの記号なども含む。書く画面で場所を探すのに使う） */
+  len: number;
+}
+
+/** 1段落（本文の1行） */
+export interface Paragraph {
+  tokens: Token[];
+  /** 0：ふつうの段落、1：章の見出し、2：節の見出し */
+  heading: 0 | 1 | 2;
+  /** 本文の中で、この段落が始まる位置 */
+  start: number;
+  /** tokens[i] が本文の中で始まる位置 */
+  offsets: number[];
 }
 
 const KANJI = /^[\p{Script=Han}々〆ヵヶ]$/u;
@@ -23,12 +38,19 @@ const DASHES = new Set(["—", "―", "─"]);
 const MAX_BASE = 20;
 const MAX_RUBY = 30;
 
-function plain(ch: string): Token {
-  return { html: escapeHtml(ch), ch };
+function plain(ch: string, len = ch.length): Token {
+  return { html: escapeHtml(ch), ch, len };
 }
 
-function ruby(base: string, rt: string): Token {
-  return { html: `<ruby>${escapeHtml(base)}<rt>${escapeHtml(rt)}</rt></ruby>` };
+function ruby(base: string, rt: string, len: number): Token {
+  return { html: `<ruby>${escapeHtml(base)}<rt>${escapeHtml(rt)}</rt></ruby>`, len };
+}
+
+/** chars[from]〜chars[to - 1] が元の文章で何文字分か */
+function lengthOf(chars: string[], from: number, to: number): number {
+  let n = 0;
+  for (let i = from; i < to; i++) n += chars[i].length;
+  return n;
 }
 
 function indexOfFrom(chars: string[], target: string, from: number, limit: number): number {
@@ -51,14 +73,16 @@ export function tokenizeLine(line: string): Token[] {
     // |親文字《ルビ》 または |《
     if (BARS.has(c)) {
       if (chars[i + 1] === "《") {
-        out.push(plain("《"));
+        out.push(plain("《", c.length + 1));
         i += 2;
         continue;
       }
       const open = indexOfFrom(chars, "《", i + 1, MAX_BASE);
       const close = open > i + 1 ? indexOfFrom(chars, "》", open + 1, MAX_RUBY) : -1;
       if (close > open + 1) {
-        out.push(ruby(chars.slice(i + 1, open).join(""), chars.slice(open + 1, close).join("")));
+        out.push(
+          ruby(chars.slice(i + 1, open).join(""), chars.slice(open + 1, close).join(""), lengthOf(chars, i, close + 1)),
+        );
         i = close + 1;
         continue;
       }
@@ -77,9 +101,12 @@ export function tokenizeLine(line: string): Token[] {
         }
       }
       if (close > i + 2) {
-        for (const ch of chars.slice(i + 2, close)) {
-          out.push({ html: `<em class="bouten">${escapeHtml(ch)}</em>` });
-        }
+        const dots = chars.slice(i + 2, close);
+        dots.forEach((ch, k) => {
+          // 前後の《《 》》の分は、最初と最後の文字に入れておく
+          const len = ch.length + (k === 0 ? 2 : 0) + (k === dots.length - 1 ? 2 : 0);
+          out.push({ html: `<em class="bouten">${escapeHtml(ch)}</em>`, len });
+        });
         i = close + 2;
         continue;
       }
@@ -95,11 +122,10 @@ export function tokenizeLine(line: string): Token[] {
         m++;
       }
       if (close > i + 1 && m > 0) {
-        const base = out
-          .splice(out.length - m, m)
-          .map((t) => t.ch)
-          .join("");
-        out.push(ruby(base, chars.slice(i + 1, close).join("")));
+        const baseTokens = out.splice(out.length - m, m);
+        const base = baseTokens.map((t) => t.ch).join("");
+        const baseLen = baseTokens.reduce((n, t) => n + t.len, 0);
+        out.push(ruby(base, chars.slice(i + 1, close).join(""), baseLen + lengthOf(chars, i, close + 1)));
         i = close + 1;
         continue;
       }
@@ -109,7 +135,8 @@ export function tokenizeLine(line: string): Token[] {
     if (DASHES.has(c) && chars[i + 1] === c) {
       let end = i + 1;
       while (chars[end + 1] === c) end++;
-      out.push({ html: `<span class="nobr">${escapeHtml(chars.slice(i, end + 1).join(""))}</span>` });
+      const dash = chars.slice(i, end + 1).join("");
+      out.push({ html: `<span class="nobr">${escapeHtml(dash)}</span>`, len: dash.length });
       i = end + 1;
       continue;
     }
@@ -120,7 +147,32 @@ export function tokenizeLine(line: string): Token[] {
   return out;
 }
 
-/** 本文全体を、段落ごとの Token の並びにする（改行で段落が分かれる） */
-export function tokenizeBody(body: string): Token[][] {
-  return body.replace(/\r\n?/g, "\n").split("\n").map(tokenizeLine);
+const HEADING = /^([#＃]{1,2})[ 　\t]*/;
+
+/** 行が見出しなら、その深さ（1：章、2：節）と、印（# と空白）の長さ・見出しの文字を返す */
+export function parseHeading(line: string): { level: 1 | 2; markLen: number; text: string } | null {
+  const m = HEADING.exec(line);
+  if (!m) return null;
+  const text = line.slice(m[0].length).trim();
+  if (!text) return null;
+  return { level: m[1].length as 1 | 2, markLen: m[0].length, text };
+}
+
+/** 本文全体を段落（行）に分ける（改行で段落が分かれる）。見出しの行は、印を取って見出しにする */
+export function tokenizeBody(body: string): Paragraph[] {
+  const out: Paragraph[] = [];
+  let start = 0;
+  for (const line of body.replace(/\r\n?/g, "\n").split("\n")) {
+    const head = parseHeading(line);
+    const tokens = tokenizeLine(head ? line.slice(head.markLen) : line);
+    const offsets: number[] = [];
+    let at = start + (head?.markLen ?? 0);
+    for (const t of tokens) {
+      offsets.push(at);
+      at += t.len;
+    }
+    out.push({ tokens, heading: head?.level ?? 0, start, offsets });
+    start += line.length + 1;
+  }
+  return out;
 }

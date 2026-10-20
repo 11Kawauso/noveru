@@ -63,7 +63,8 @@
   line-break: strict;
 }
 
-.reader.is-vertical .page-content {
+.reader.is-vertical .page-content,
+.page-thumbs.is-vertical .page-content {
   writing-mode: vertical-rl;
   text-orientation: mixed;
 }
@@ -78,6 +79,27 @@
 /* 次のページに続く段落は、最後の行も行末までそろえる */
 .page-content p.split {
   text-align-last: justify;
+}
+
+/* 見出し（# 章、## 節） */
+.page-content p.heading {
+  font-weight: 600;
+  text-align: start;
+  letter-spacing: 0.06em;
+}
+
+.page-content p.heading-1 {
+  margin-block-end: 1.5em;
+  font-size: 1.3em;
+}
+
+.page-content p.heading-2 {
+  margin-block: 1em 0.75em;
+  font-size: 1.1em;
+}
+
+.page-content p.heading-2:first-child {
+  margin-block-start: 0;
 }
 
 /* 「——」が行やページの境目で分かれないようにする */
@@ -108,7 +130,8 @@
   padding: 0 1em;
 }
 
-.reader.is-vertical .title-page {
+.reader.is-vertical .title-page,
+.page-thumbs.is-vertical .title-page {
   padding: 1em 0;
 }
 

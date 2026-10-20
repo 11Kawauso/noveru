@@ -1,8 +1,9 @@
 // 読む画面の本体：文庫本サイズのページに区切って、1ページずつめくって読む
 // 「読む」ページと、書く画面の「プレビュー」の両方で使う。
+// ページの区切り方（createPaginator）は、書く画面の右のページ一覧でも使う。
 
 import { escapeHtml, h } from "./dom";
-import { tokenizeBody, type Token } from "./ruby";
+import { tokenizeBody, type Paragraph, type Token } from "./ruby";
 import { createZoomControl, getZoom, onZoomChange } from "./pageZoom";
 
 export interface ReadableBook {
@@ -20,7 +21,7 @@ const NO_LINE_END = new Set(Array.from("「『（【〔〈《“‘([{"));
 const FONT_TIMEOUT = 4000;
 
 /** 本文に使われている文字のフォントを先に読み込む（ページ区切りがずれないように） */
-async function loadFonts(text: string) {
+export async function loadFonts(text: string) {
   if (!document.fonts) return;
   const chars = Array.from(new Set(Array.from(text))).join("");
   const loads = Promise.all([
@@ -36,26 +37,40 @@ function joinTokens(tokens: Token[], from: number, to: number): string {
   return s;
 }
 
+/** 1ページ分 */
+export interface PageInfo {
+  html: string;
+  /** このページが本文の何文字目から始まるか */
+  start: number;
+}
+
 /** 本文をページごとの HTML に分ける。measure は実際のページと同じ大きさの入れ物 */
-function paginate(measure: HTMLElement, paragraphs: Token[][], vertical: boolean): string[] {
-  const pages: string[] = [];
+function paginate(measure: HTMLElement, paragraphs: Paragraph[], vertical: boolean): PageInfo[] {
+  const pages: PageInfo[] = [];
+  let pageStart = 0;
   const fits = () =>
     vertical
       ? measure.scrollWidth <= measure.clientWidth + 1
       : measure.scrollHeight <= measure.clientHeight + 1;
   const pushPage = () => {
-    pages.push(measure.innerHTML);
+    pages.push({ html: measure.innerHTML, start: pageStart });
     measure.replaceChildren();
+  };
+  /** 段落をページに足す（ページの最初のものなら、そこをページの始まりにする） */
+  const add = (p: HTMLElement, at: number) => {
+    if (!measure.firstChild) pageStart = at;
+    measure.append(p);
   };
 
   measure.replaceChildren();
-  for (const tokens of paragraphs) {
+  for (const para of paragraphs) {
+    const { tokens } = para;
     if (tokens.length === 0) {
       // 空行。ページの先頭に来る空行は省く
       if (!measure.firstChild) continue;
       const p = document.createElement("p");
       p.innerHTML = "<br>";
-      measure.append(p);
+      add(p, para.start);
       if (!fits()) {
         p.remove();
         pushPage();
@@ -63,10 +78,25 @@ function paginate(measure: HTMLElement, paragraphs: Token[][], vertical: boolean
       continue;
     }
 
+    if (para.heading) {
+      // 見出しは分けない。章は新しいページから始める
+      if (para.heading === 1 && measure.firstChild) pushPage();
+      const p = document.createElement("p");
+      p.className = `heading heading-${para.heading}`;
+      p.innerHTML = joinTokens(tokens, 0, tokens.length);
+      add(p, para.start);
+      if (!fits() && measure.childElementCount > 1) {
+        p.remove();
+        pushPage();
+        add(p, para.start);
+      }
+      continue;
+    }
+
     let start = 0;
     while (start < tokens.length) {
       const p = document.createElement("p");
-      measure.append(p);
+      add(p, para.offsets[start]);
       p.innerHTML = joinTokens(tokens, start, tokens.length);
       if (fits()) break;
 
@@ -103,11 +133,33 @@ function paginate(measure: HTMLElement, paragraphs: Token[][], vertical: boolean
     }
   }
   if (measure.firstChild) pushPage();
-  if (pages.length === 0) pages.push("");
+  if (pages.length === 0) pages.push({ html: "", start: 0 });
   return pages;
 }
 
-function titlePageHtml(book: ReadableBook): string {
+/**
+ * ページの区切りを計算する道具（画面の外に、実際のページと同じ大きさの見えないページを置いて測る）。
+ * 1ページ目はタイトルと作者のページ。使い終わったら destroy() を呼ぶ。
+ */
+export function createPaginator() {
+  const measureContent = h("div", { class: "page-content" });
+  const measurer = h("div", { class: "reader measuring" }, h("div", { class: "page" }, measureContent));
+  document.body.append(measurer);
+  return {
+    paginate(book: ReadableBook): PageInfo[] {
+      measurer.classList.toggle("is-vertical", book.vertical);
+      return [
+        { html: titlePageHtml(book), start: 0 },
+        ...paginate(measureContent, tokenizeBody(book.body), book.vertical),
+      ];
+    },
+    destroy() {
+      measurer.remove();
+    },
+  };
+}
+
+export function titlePageHtml(book: ReadableBook): string {
   const title = escapeHtml(book.title.trim() || "無題");
   const author = escapeHtml(book.author.trim());
   return `<div class="title-page"><h1 class="title-page-title">${title}</h1>${
@@ -134,9 +186,8 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
   const leftBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? next() : prev()) }, "‹");
   const rightBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? prev() : next()) }, "›");
 
-  // 区切りを計算するための見えないページ
-  const measureContent = h("div", { class: "page-content" });
-  const measurer = h("div", { class: "reader measuring" }, h("div", { class: "page" }, measureContent));
+  // 区切りを計算する道具（見えないページ）
+  const paginator = createPaginator();
 
   const el = h(
     "div",
@@ -198,8 +249,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     if (destroyed) return;
     const progress = pages.length > 1 ? index / (pages.length - 1) : 0;
     el.classList.toggle("is-vertical", book.vertical);
-    measurer.classList.toggle("is-vertical", book.vertical);
-    pages = [titlePageHtml(book), ...paginate(measureContent, tokenizeBody(book.body), book.vertical)];
+    pages = paginator.paginate(book).map((p) => p.html);
     index = pages.length > 1 && index > 0 ? Math.round(progress * (pages.length - 1)) : index;
     show();
     fit();
@@ -259,7 +309,6 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
   document.addEventListener("keydown", onKey);
   window.addEventListener("resize", fit);
 
-  document.body.append(measurer);
   content.innerHTML = '<p class="reader-loading">読み込み中…</p>';
   loadFonts(book.title + book.author + book.body).then(() => {
     layout();
@@ -275,7 +324,7 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
       window.removeEventListener("resize", fit);
       stopZoom();
       document.fonts?.removeEventListener("loadingdone", onFontsDone);
-      measurer.remove();
+      paginator.destroy();
     },
   };
 }
