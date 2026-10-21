@@ -1144,3 +1144,22 @@ a.tag-chip:hover,
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* アカウントページの上の「← 戻る」 */
+.read-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 920px;
+  margin: 0 auto 16px;
+}
+
+.read-page-head a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.read-page-head a:hover {
+  color: var(--accent);
+}

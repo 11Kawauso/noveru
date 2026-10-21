@@ -1,26 +1,6 @@
-/* 読む画面（文庫本サイズのページ） */
+/* 読む画面（文庫本サイズのページを並べて、スクロールして読む） */
 
-.reader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.reader-stage {
-  display: flex;
-  width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.page-wrap {
-  position: relative;
-  flex: none;
-  /* 真ん中に置く。拡大して画面より大きいときは左端から見られる */
-  margin: 0 auto;
-}
-
+/* 文庫本サイズの1ページ（区切りを測る見えないページと、書く画面の右のページの一覧で使う） */
 .page {
   position: absolute;
   top: 0;
@@ -35,25 +15,6 @@
   user-select: none;
   cursor: pointer;
   touch-action: pan-y;
-}
-
-/* 長いページで、まだ続きがあるとき（ページの下に小さく出す） */
-.page.has-more::after {
-  content: "続きは下へ ↓";
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--bg);
-  color: var(--muted);
-  font-size: 12px;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.reader.is-vertical .page.has-more::after {
-  content: "← 続きは左へ";
 }
 
 /* 区切りを計算するための見えないページ */
@@ -99,12 +60,6 @@
   line-break: strict;
 }
 
-/* 作者が長く書いたページは、ページの中でスクロールして読む */
-.reader:not(.measuring) .page-content {
-  overflow: auto;
-}
-
-.reader.is-vertical .page-content,
 .page-thumbs.is-vertical .page-content,
 .page-stack.is-vertical .page-content {
   writing-mode: vertical-rl;
@@ -172,7 +127,6 @@
   padding: 0 1em;
 }
 
-.reader.is-vertical .title-page,
 .page-thumbs.is-vertical .title-page,
 .page-stack.is-vertical .title-page {
   padding: 1em 0;
@@ -197,44 +151,177 @@
   color: var(--muted);
 }
 
-.reader-controls {
+/* ---- 読む画面の並び（画面の全体をおおう）：左のパネル ｜ ページを並べてスクロールする所 ---- */
+
+:root {
+  --reader-side-w: 260px;
+}
+
+.book-reader {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--bg);
+}
+
+/* 左のパネル：戻る（左上）・タイトルと作者・いいねなど・目次 */
+.reader-side {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: var(--reader-side-w);
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.reader-side-head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.page-btn {
-  width: 48px;
-  font-size: 22px;
-  line-height: 1;
-}
-
-.page-counter {
-  min-width: 6em;
-  color: var(--muted);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 読むページのヘッダー部分 */
-.read-page-head {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  max-width: 920px;
-  margin: 0 auto 16px;
+  gap: 8px;
+  padding: 14px 16px 4px;
 }
 
-.read-page-head a {
+.reader-back {
+  margin-left: -8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
   color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.reader-back:hover {
+  background: var(--paper);
+  color: var(--text);
+}
+
+/* 「目次など」はスマホのときだけ出す */
+.reader-menu-btn {
+  display: none;
+}
+
+.reader-side-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 16px 24px;
+}
+
+.reader-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.reader-author {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.reader-edit {
+  color: var(--muted);
+  font-size: 14px;
   text-decoration: none;
 }
 
-.read-page-head a:hover {
+.reader-edit:hover {
   color: var(--accent);
+}
+
+.reader-side .read-synopsis-wrap {
+  max-width: none;
+  margin: 0;
+}
+
+.reader-side .outline-head {
+  margin-top: 0;
+}
+
+.reader-preview-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ページを並べてスクロールする所 */
+.reader-main {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--reader-side-w);
+}
+
+.reader-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 28px 44px 72px 24px;
+  scroll-behavior: smooth;
+}
+
+/* 縦書き：ページを本と同じく右から左へ並べる（右が始まり） */
+.reader-scroll.is-vertical {
+  direction: rtl;
+  padding: 24px 24px 84px;
+}
+
+.reader-stack .wsheet-title {
+  cursor: default;
+}
+
+/* 長いページは、そのぶん伸びる（横書きは下へ、縦書きは左へ） */
+.reader-sheet .page-content {
+  height: auto;
+  overflow: visible;
+}
+
+.reader-stack.is-vertical .reader-sheet {
+  display: flex;
+  justify-content: flex-end;
+  height: var(--page-h);
+}
+
+.reader-stack.is-vertical .reader-sheet .page-content {
+  width: auto;
+  height: 100%;
+}
+
+/* 右下（縦書きは下の右）：ページ数と拡大縮小。スクロールバーは横書きなら右、縦書きなら下 */
+.reader-status {
+  position: absolute;
+  right: 10px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reader-count {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reader-main .vscroll.is-x {
+  right: 250px;
 }
 
 /* プレビュー（書く画面の上に重ねて出す） */
@@ -242,7 +329,64 @@
   position: fixed;
   inset: 0;
   z-index: 50;
-  overflow: auto;
-  padding: 24px 16px;
-  background: var(--bg);
+}
+
+/* スマホ：左のパネルは上の1列にして、「目次など」で中身を出し入れする */
+@media (max-width: 700px) {
+  .reader-side {
+    bottom: auto;
+    right: 0;
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+    z-index: 2;
+  }
+
+  .reader-side-head {
+    height: 52px;
+    padding: 0 12px;
+  }
+
+  .reader-menu-btn {
+    display: inline-flex;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .reader-side-body {
+    display: none;
+  }
+
+  .reader-side.is-open .reader-side-body {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    display: flex;
+    width: min(340px, 92vw);
+    max-height: calc(100vh - 72px);
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-top: none;
+    background: var(--bg);
+    box-shadow: var(--page-shadow);
+  }
+
+  .reader-main {
+    top: 52px;
+    left: 0;
+  }
+
+  .reader-scroll {
+    padding: 16px 8px 72px;
+  }
+
+  .vscroll {
+    display: none;
+  }
 }

@@ -1,6 +1,7 @@
 // 読む画面（URL を知っている人なら、並べてある本を誰でも読める）
+//   ページを並べてスクロールして読む（reader.ts）。左のパネルに、戻る・タイトルと作者・いいね・タグ・あらすじ・目次。
 
-import { displayTitle } from "../lib/cover";
+import { displayTitle, renderCover } from "../lib/cover";
 import { h } from "../lib/dom";
 import { backLink } from "../lib/backLink";
 import { createLikeButton } from "../lib/likeButton";
@@ -36,29 +37,32 @@ export function readPage(app: HTMLElement, params: Record<string, string>) {
         return;
       }
       document.title = `${displayTitle(book)} - noveru`;
-      reader = createReader(book);
-      store.recordView(uid, id).catch(() => {});
-      status.replaceWith(
-        h(
-          "div",
-          { class: "read-page-head" },
-          backLink(isMine ? "/" : `/u/${encodeURIComponent(uid)}`),
+      reader = createReader(book, {
+        back: backLink(isMine ? "/" : `/u/${encodeURIComponent(uid)}`, "reader-back"),
+        cover: renderCover(book),
+        extra: [
           h(
             "div",
             { class: "read-page-actions" },
             createLikeButton(uid, id),
-            isMine ? h("a", { href: `#/write/${encodeURIComponent(id)}` }, "編集") : null,
+            isMine ? h("a", { class: "reader-edit", href: `#/write/${encodeURIComponent(id)}` }, "編集") : null,
           ),
-        ),
-        renderTagChips(book.tags) ?? "",
-        book.synopsis
-          ? withScrollThumb(
-              h("div", { class: "read-synopsis" }, h("span", { class: "read-synopsis-label" }, "あらすじ"), book.synopsis),
-              "read-synopsis-wrap",
-            )
-          : "",
-        reader.el,
-      );
+          renderTagChips(book.tags),
+          book.synopsis
+            ? withScrollThumb(
+                h(
+                  "div",
+                  { class: "read-synopsis" },
+                  h("span", { class: "read-synopsis-label" }, "あらすじ"),
+                  book.synopsis,
+                ),
+                "read-synopsis-wrap",
+              )
+            : null,
+        ],
+      });
+      store.recordView(uid, id).catch(() => {});
+      status.replaceWith(reader.el);
     });
 
   return () => {

@@ -1,4 +1,4 @@
-// 読む画面の本体：文庫本サイズのページを、1ページずつめくって読む
+// 読む画面の本体：文庫本サイズのページを並べて、スクロールして読む（createReader）
 // 「読む」ページと、書く画面の「プレビュー」の両方で使う。
 // ページは作者が書く画面で足したとおり（本文の中の区切りの印 PAGE_BREAK で分ける）。長いページは中でスクロールする。
 // 区切りの印がない本文（ページを自分で足す前に保存した作品）は、文庫本の大きさで自動で区切る（createPaginator）。
@@ -6,6 +6,7 @@
 import { escapeHtml, h } from "./dom";
 import { PAGE_BREAK, tokenizeBody, type Paragraph, type Token } from "./ruby";
 import { createZoomControl, getZoom, onZoomChange } from "./pageZoom";
+import { createScrollbar } from "./scrollbar";
 
 export interface ReadableBook {
   title: string;
@@ -224,170 +225,231 @@ export interface Reader {
   destroy(): void;
 }
 
-export function createReader(source: ReadableBook, opts: { onClose?: () => void } = {}): Reader {
+export interface ReaderOptions {
+  /** 左上に置く「戻る」（プレビューなら「閉じる」） */
+  back?: HTMLElement | null;
+  /** 表紙（なければ表紙のページは出さない） */
+  cover?: HTMLElement | null;
+  /** 左のパネルの、タイトルと作者の下に入れるもの（いいね・タグ・あらすじなど） */
+  extra?: (Node | null | undefined | false)[];
+  /** Esc で閉じるとき（プレビュー） */
+  onClose?: () => void;
+}
+
+/**
+ * 読む画面：ページを並べて、スクロールして読む。
+ *   横書きの本はページを上から下へ並べて、縦にスクロールする（スクロールバーとページ数は右）。
+ *   縦書きの本はページを右から左へ並べて、横にスクロールする（スクロールバーとページ数は下）。
+ *   左のパネルには、戻る・タイトルと作者・いいねなど・見出しの一覧（押すとそこへ飛ぶ）。
+ *   長いページは、そのぶんページが伸びる。
+ *   画面の全体をおおう（position: fixed）。「読む」ページと、書く画面の「プレビュー」の両方で使う。
+ */
+export function createReader(source: ReadableBook, opts: ReaderOptions = {}): Reader {
   const book = { ...source };
-  let pages: string[] = [];
-  let index = 0;
   let destroyed = false;
+  let current = -1;
+  let total = 0;
 
-  const content = h("div", { class: "page-content" });
-  const page = h("div", { class: "page" }, content);
-  const wrap = h("div", { class: "page-wrap" }, page);
-  const stage = h("div", { class: "reader-stage" }, wrap);
-  const counter = h("span", { class: "page-counter" });
-  const leftBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? next() : prev()) }, "‹");
-  const rightBtn = h("button", { class: "btn page-btn", onclick: () => (book.vertical ? prev() : next()) }, "›");
-
-  // 区切りを計算する道具（見えないページ）
-  const paginator = createPaginator();
-
-  const el = h(
+  const stack = h("div", { class: "page-stack reader-stack" });
+  const scroller = h("div", { class: "reader-scroll" }, stack);
+  const counter = h("span", { class: "reader-count" });
+  const scrollbar = createScrollbar(scroller, { label: () => counter.textContent ?? "" });
+  const outline = h("ol", { class: "outline-list" });
+  const outlineBox = h(
     "div",
-    { class: "reader" },
-    stage,
+    { class: "reader-outline", hidden: true },
+    h("div", { class: "outline-head" }, h("span", { class: "outline-label" }, "目次")),
+    outline,
+  );
+  const menuBtn = h("button", { class: "reader-menu-btn", type: "button", "aria-expanded": "false" }, "目次など");
+  const sideBody = h(
+    "div",
+    { class: "reader-side-body" },
     h(
       "div",
-      { class: "reader-controls" },
-      leftBtn,
-      counter,
-      rightBtn,
-      createZoomControl(),
-      opts.onClose ? h("button", { class: "btn", onclick: () => opts.onClose!() }, "閉じる") : null,
+      { class: "reader-book" },
+      h("h1", { class: "reader-title" }, book.title.trim() || "無題"),
+      book.author.trim() ? h("p", { class: "reader-author" }, book.author.trim()) : null,
+    ),
+    ...(opts.extra ?? []).filter((x): x is Node => !!x),
+    outlineBox,
+  );
+  const side = h(
+    "aside",
+    { class: "reader-side", "aria-label": "目次など" },
+    h("div", { class: "reader-side-head" }, opts.back ?? null, menuBtn),
+    sideBody,
+  );
+  const el = h(
+    "div",
+    { class: "book-reader" },
+    side,
+    h(
+      "div",
+      { class: "reader-main" },
+      scroller,
+      scrollbar.el,
+      h("div", { class: "reader-status" }, counter, createZoomControl()),
     ),
   );
 
-  const show = () => {
-    index = Math.max(0, Math.min(index, pages.length - 1));
-    content.innerHTML = pages[index] ?? "";
-    content.classList.toggle("is-title", index === 0);
-    // 長いページは中でスクロールするので、めくったら始めから
-    content.scrollTop = 0;
-    content.scrollLeft = 0;
-    drawMore();
-    counter.textContent = `${index + 1} / ${pages.length}`;
-    const atStart = index === 0;
-    const atEnd = index === pages.length - 1;
-    leftBtn.disabled = book.vertical ? atEnd : atStart;
-    rightBtn.disabled = book.vertical ? atStart : atEnd;
-    leftBtn.title = book.vertical ? "次のページ" : "前のページ";
-    rightBtn.title = book.vertical ? "前のページ" : "次のページ";
+  // スマホでは、左のパネルは上の1列になり、「目次など」で中身を出し入れする
+  const setMenu = (open: boolean) => {
+    side.classList.toggle("is-open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
   };
+  menuBtn.addEventListener("click", () => setMenu(!side.classList.contains("is-open")));
 
-  const next = () => {
-    if (index < pages.length - 1) {
-      index++;
-      show();
-    }
-  };
-  const prev = () => {
-    if (index > 0) {
-      index--;
-      show();
-    }
-  };
+  // ---- ページ ----
 
-  /** 画面に収まる大きさにページ全体を縮め、選んだ倍率をかける（中の文字の並びは変えない） */
-  const fit = () => {
-    const pw = page.offsetWidth;
-    const ph = page.offsetHeight;
-    if (!pw || !ph) return;
-    const controls = el.querySelector<HTMLElement>(".reader-controls")?.offsetHeight ?? 60;
-    const top = stage.getBoundingClientRect().top + window.scrollY;
-    const availW = stage.clientWidth;
-    const availH = window.innerHeight - top - controls - 40;
-    const scale = Math.min(1, availW / pw, Math.max(availH, 240) / ph) * getZoom();
-    page.style.transform = `scale(${scale})`;
-    wrap.style.width = `${pw * scale}px`;
-    wrap.style.height = `${ph * scale}px`;
-  };
+  const wraps = (): HTMLElement[] => [...stack.querySelectorAll<HTMLElement>(".wsheet-wrap")];
 
   const layout = () => {
     if (destroyed) return;
-    const progress = pages.length > 1 ? index / (pages.length - 1) : 0;
     el.classList.toggle("is-vertical", book.vertical);
-    pages = bookPages(book, paginator);
-    index = pages.length > 1 && index > 0 ? Math.round(progress * (pages.length - 1)) : index;
-    show();
+    stack.classList.toggle("is-vertical", book.vertical);
+    scroller.classList.toggle("is-vertical", book.vertical);
+    scrollbar.setAxis(book.vertical ? "x" : "y");
+    const pages = bookPages(book, paginator);
+    total = pages.length;
+    stack.replaceChildren(
+      ...(opts.cover
+        ? [h("div", { class: "wsheet-wrap", "data-index": 0 }, h("div", { class: "wsheet wsheet-cover" }, opts.cover))]
+        : []),
+      ...pages.map((html, i) => {
+        const content = h("div", { class: i === 0 ? "page-content is-title" : "page-content" });
+        content.innerHTML = html;
+        return h(
+          "div",
+          { class: "wsheet-wrap", "data-index": i + 1 },
+          h("div", { class: i === 0 ? "wsheet wsheet-title" : "wsheet reader-sheet" }, content),
+          h("span", { class: "wsheet-num" }, String(i + 1)),
+        );
+      }),
+    );
+    drawOutline();
     fit();
+    current = -1;
+    onScroll();
   };
 
-  const onKey = (e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      book.vertical ? next() : prev();
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      book.vertical ? prev() : next();
-    } else if (e.key === "PageDown" || e.key === " ") {
-      e.preventDefault();
-      next();
-    } else if (e.key === "PageUp") {
-      e.preventDefault();
-      prev();
-    } else if (e.key === "Escape" && opts.onClose) {
-      opts.onClose();
+  /** 見出しの一覧（押すと、その見出しへ飛ぶ） */
+  const headings = (): HTMLElement[] => [...stack.querySelectorAll<HTMLElement>("p.heading")];
+  const drawOutline = () => {
+    const list = headings();
+    outlineBox.hidden = list.length === 0;
+    outline.replaceChildren(
+      ...list.map((p, i) => {
+        const copy = p.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll("rt").forEach((rt) => rt.remove());
+        return h(
+          "li",
+          { class: `outline-item level-${p.classList.contains("heading-2") ? 2 : 1}` },
+          h(
+            "button",
+            {
+              type: "button",
+              onclick: () => {
+                setMenu(false);
+                showAt(headings()[i]);
+              },
+            },
+            copy.textContent ?? "",
+          ),
+        );
+      }),
+    );
+  };
+
+  /** その要素が見えるようにスクロールする（横書きは上の端、縦書きは右の端に合わせる） */
+  const showAt = (target: Element, smooth = true) => {
+    const r = target.getBoundingClientRect();
+    const box = scroller.getBoundingClientRect();
+    const behavior = smooth ? "smooth" : "instant";
+    if (book.vertical) scroller.scrollBy({ left: r.right - (box.right - 32), behavior });
+    else scroller.scrollBy({ top: r.top - box.top - 24, behavior });
+  };
+
+  /** スクロールしたとき：画面の真ん中あたりにあるページと見出しを、いまの場所にする */
+  const onScroll = () => {
+    const box = scroller.getBoundingClientRect();
+    const line = book.vertical ? box.right - box.width * 0.4 : box.top + box.height * 0.4;
+    const started = (e: Element) => {
+      const r = e.getBoundingClientRect();
+      return book.vertical ? r.right >= line : r.top <= line;
+    };
+    const list = wraps();
+    let lo = 0;
+    let hi = list.length - 1;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (started(list[mid])) lo = mid;
+      else hi = mid - 1;
     }
+    const index = Number(list[lo]?.dataset.index ?? 0);
+    if (index !== current) {
+      current = index;
+      counter.textContent = index === 0 ? `表紙 / ${total}` : `${index} / ${total}`;
+    }
+    let head = -1;
+    headings().forEach((p, i) => started(p) && (head = i));
+    outline.querySelectorAll(".outline-item").forEach((li, i) => li.classList.toggle("is-current", i === head));
+  };
+  let frame = 0;
+  const onScrollThrottled = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(onScroll);
+  };
+  scroller.addEventListener("scroll", onScrollThrottled, { passive: true });
+
+  /** 画面に入る大きさにページを縮めて、選んだ倍率をかける（縦書きは高さも入るように） */
+  const fit = () => {
+    const root = getComputedStyle(document.documentElement);
+    const pageW = parseFloat(root.getPropertyValue("--page-w")) || 440;
+    const pageH = parseFloat(root.getPropertyValue("--page-h")) || 624;
+    const roomW = scroller.clientWidth - 32;
+    const roomH = scroller.clientHeight - 150;
+    let scale = roomW > 0 ? Math.min(1, roomW / pageW) : 1;
+    if (book.vertical && roomH > 0) scale = Math.min(scale, roomH / pageH);
+    stack.style.zoom = String(scale * getZoom());
   };
 
-  /** 長いページで、まだ続きがあるときは、ページの下に「続きがあります」と出す（スクロールバーは出していないので） */
-  function drawMore() {
-    const more = book.vertical
-      ? Math.abs(content.scrollLeft) + content.clientWidth < content.scrollWidth - 2
-      : content.scrollTop + content.clientHeight < content.scrollHeight - 2;
-    page.classList.toggle("has-more", more);
-  }
-  content.addEventListener("scroll", drawMore, { passive: true });
-
-  // 縦書きの長いページは横にはみ出すので、マウスのホイール（上下）で左右に動けるようにする
-  content.addEventListener(
+  // 縦書きはページが横に並ぶので、マウスのホイール（上下）で左右に動く（下に回すと先＝左へ）
+  scroller.addEventListener(
     "wheel",
     (e) => {
-      if (!book.vertical || content.scrollWidth <= content.clientWidth + 1) return;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (!book.vertical || e.shiftKey || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault();
-      content.scrollLeft -= e.deltaY;
+      scroller.scrollBy({ left: -e.deltaY });
     },
     { passive: false },
   );
 
-  // ページの左右をクリックしてめくる
-  page.addEventListener("click", (e) => {
-    const r = page.getBoundingClientRect();
-    const left = e.clientX < r.left + r.width / 2;
-    if (left === book.vertical) next();
-    else prev();
-  });
-
-  // スマホのスワイプ
-  let touchX = 0;
-  let touchY = 0;
-  page.addEventListener(
-    "touchstart",
-    (e) => {
-      touchX = e.touches[0].clientX;
-      touchY = e.touches[0].clientY;
-    },
-    { passive: true },
-  );
-  page.addEventListener("touchend", (e) => {
-    const dx = e.changedTouches[0].clientX - touchX;
-    const dy = e.changedTouches[0].clientY - touchY;
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-    e.preventDefault(); // クリック扱いにしない
-    const swipeRight = dx > 0;
-    if (swipeRight === book.vertical) next();
-    else prev();
-  });
-
-  const onFontsDone = () => layout();
-  // 拡大縮小したら、ページの見た目の大きさだけを変える
-  const stopZoom = onZoomChange(fit);
+  // キーで読み進める（横書きは ↓・縦書きは ← が先。スペース・PageDown も先へ）
+  const onKey = (e: KeyboardEvent) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.key === "Escape" && opts.onClose) return opts.onClose();
+    const forward = book.vertical ? ["ArrowLeft", "PageDown", " "] : ["ArrowDown", "PageDown", " "];
+    const backward = book.vertical ? ["ArrowRight", "PageUp"] : ["ArrowUp", "PageUp"];
+    const dir = forward.includes(e.key) ? 1 : backward.includes(e.key) ? -1 : 0;
+    if (!dir) return;
+    e.preventDefault();
+    const step = (book.vertical ? scroller.clientWidth : scroller.clientHeight) * (e.key.startsWith("Arrow") ? 0.3 : 0.85);
+    if (book.vertical) scroller.scrollBy({ left: -dir * step, behavior: "smooth" });
+    else scroller.scrollBy({ top: dir * step, behavior: "smooth" });
+  };
   document.addEventListener("keydown", onKey);
-  window.addEventListener("resize", fit);
 
-  content.innerHTML = '<p class="reader-loading">読み込み中…</p>';
+  const onResize = () => fit();
+  window.addEventListener("resize", onResize);
+  const stopZoom = onZoomChange(fit);
+
+  // 区切りを計算する道具（ページを自分で足す前に保存した作品だけ使う）
+  const paginator = createPaginator();
+  const onFontsDone = () => layout();
+  stack.append(h("p", { class: "reader-loading" }, "読み込み中…"));
   loadFonts(book.title + book.author + book.body).then(() => {
+    // 表紙（なければタイトルのページ）から読み始める
     layout();
     // あとから届いたフォントがあれば区切り直す
     document.fonts?.addEventListener("loadingdone", onFontsDone);
@@ -397,9 +459,11 @@ export function createReader(source: ReadableBook, opts: { onClose?: () => void 
     el,
     destroy() {
       destroyed = true;
+      cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", fit);
+      window.removeEventListener("resize", onResize);
       stopZoom();
+      scrollbar.destroy();
       document.fonts?.removeEventListener("loadingdone", onFontsDone);
       paginator.destroy();
     },

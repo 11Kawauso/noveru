@@ -525,7 +525,12 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
       overlay.remove();
       closePreview = null;
     };
-    const reader = createReader(input(), { onClose: closePreview });
+    const reader = createReader(input(), {
+      back: h("button", { class: "reader-back", type: "button", onclick: () => closePreview?.() }, "← 閉じる"),
+      cover: renderCover(currentMeta(cover)),
+      extra: [h("p", { class: "reader-preview-note" }, "プレビュー：読む人には、このように見えます。")],
+      onClose: () => closePreview?.(),
+    });
     overlay.append(reader.el);
     document.body.append(overlay);
   };
