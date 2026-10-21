@@ -282,7 +282,11 @@
   cursor: default;
 }
 
-/* 長いページは、そのぶん伸びる（横書きは下へ、縦書きは左へ） */
+/* 長いページは、そのぶん伸びる（横書きは下へ、縦書きは左へ）。もう一方の向きの大きさは文庫本のまま */
+.reader-sheet {
+  width: var(--page-w);
+}
+
 .reader-sheet .page-content {
   height: auto;
   overflow: visible;
@@ -291,6 +295,7 @@
 .reader-stack.is-vertical .reader-sheet {
   display: flex;
   justify-content: flex-end;
+  width: auto;
   height: var(--page-h);
 }
 

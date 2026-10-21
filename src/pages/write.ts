@@ -11,7 +11,7 @@ import { renderCover } from "../lib/cover";
 import { confirmDialog, h, openDialog, toast } from "../lib/dom";
 import { compressCover } from "../lib/image";
 import { createPagedEditor } from "../lib/pagedEditor";
-import { createZoomControl, getZoom, onZoomChange } from "../lib/pageZoom";
+import { createZoomControl, enableGestureZoom, getZoom, onZoomChange } from "../lib/pageZoom";
 import { createReader } from "../lib/reader";
 import { createScrollbar } from "../lib/scrollbar";
 import { withScrollThumb } from "../lib/scrollThumb";
@@ -355,6 +355,8 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   };
   const stopZoom = onZoomChange(applyZoom);
   window.addEventListener("resize", applyZoom);
+  // 紙の上での指のピンチ・Ctrl ＋ ホイールでも拡大縮小できる
+  const stopGestureZoom = enableGestureZoom(scroller, editor.el);
 
   const save = async (): Promise<boolean> => {
     if (saving) return false;
@@ -686,6 +688,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("resize", applyZoom);
     stopZoom();
+    stopGestureZoom();
     closePreview?.();
     editor.destroy();
     scrollbar.destroy();

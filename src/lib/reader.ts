@@ -5,7 +5,7 @@
 
 import { escapeHtml, h } from "./dom";
 import { PAGE_BREAK, tokenizeBody, type Paragraph, type Token } from "./ruby";
-import { createZoomControl, getZoom, onZoomChange } from "./pageZoom";
+import { createZoomControl, enableGestureZoom, getZoom, onZoomChange } from "./pageZoom";
 import { createScrollbar } from "./scrollbar";
 
 export interface ReadableBook {
@@ -443,6 +443,8 @@ export function createReader(source: ReadableBook, opts: ReaderOptions = {}): Re
   const onResize = () => fit();
   window.addEventListener("resize", onResize);
   const stopZoom = onZoomChange(fit);
+  // ページの上での指のピンチ・Ctrl ＋ ホイールでも拡大縮小できる
+  const stopGestureZoom = enableGestureZoom(scroller, stack);
 
   // 区切りを計算する道具（ページを自分で足す前に保存した作品だけ使う）
   const paginator = createPaginator();
@@ -463,6 +465,7 @@ export function createReader(source: ReadableBook, opts: ReaderOptions = {}): Re
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       stopZoom();
+      stopGestureZoom();
       scrollbar.destroy();
       document.fonts?.removeEventListener("loadingdone", onFontsDone);
       paginator.destroy();
