@@ -147,7 +147,75 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     editor.jumpToPage(index);
   };
 
-  const outline = createOutlinePanel({ title, author, editor, jump: jumpTo });
+  // ---- 表紙とあらすじ（タイトルの上） ----
+
+  const coverPreview = h("div", { class: "outline-cover-preview" });
+  const coverFile = h("input", { type: "file", accept: "image/*", hidden: true });
+  const coverRemove = h("button", { class: "outline-small-btn", type: "button" }, "画像を外す");
+  const drawCoverPreview = () => {
+    coverPreview.replaceChildren(renderCover(currentMeta(cover)));
+    coverRemove.hidden = !cover;
+  };
+  /** 表紙が変わったら、真ん中の紙と右のページの一覧の表紙も描き直す */
+  const coverChanged = () => {
+    drawCoverPreview();
+    editor.refreshTitle();
+    pagesPanel.refreshTitle();
+  };
+  coverFile.addEventListener("change", async () => {
+    const file = coverFile.files?.[0];
+    coverFile.value = "";
+    if (!file) return;
+    try {
+      cover = await compressCover(file);
+      coverChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "画像を読み込めませんでした。");
+    }
+  });
+  coverRemove.addEventListener("click", () => {
+    cover = null;
+    coverChanged();
+  });
+  const coverField = h(
+    "div",
+    { class: "outline-field" },
+    h("span", {}, "表紙"),
+    h(
+      "div",
+      { class: "outline-cover" },
+      coverPreview,
+      h(
+        "div",
+        { class: "outline-cover-side" },
+        h("button", { class: "outline-small-btn", type: "button", onclick: () => coverFile.click() }, "画像を選ぶ"),
+        coverRemove,
+        coverFile,
+        h("p", { class: "outline-cover-note" }, "選ばなければ、タイトルと作者を書いた表紙になります。"),
+      ),
+    ),
+  );
+
+  const synopsisInput = h("textarea", {
+    class: "synopsis-input outline-synopsis",
+    maxlength: MAX_SYNOPSIS,
+    placeholder: "どんなお話か、短く書いておくと、読む人が選びやすくなります。",
+  });
+  const synopsisCount = h("small", { class: "outline-count" });
+  const drawSynopsisCount = () => (synopsisCount.textContent = `${synopsisInput.value.length} / ${MAX_SYNOPSIS}字`);
+  synopsisInput.addEventListener("input", () => {
+    synopsis = synopsisInput.value;
+    drawSynopsisCount();
+  });
+  const synopsisField = h(
+    "label",
+    { class: "outline-field" },
+    h("span", {}, "あらすじ"),
+    withScrollThumb(synopsisInput, "bio-input-wrap"),
+    synopsisCount,
+  );
+
+  const outline = createOutlinePanel({ title, author, editor, jump: jumpTo, top: [coverField, synopsisField] });
   const pagesPanel = createPagesPanel({
     meta: () => currentMeta(cover),
     title: () => ({ title: title.value, author: author.value }),
@@ -288,6 +356,7 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     field.addEventListener("input", () => {
       editor.refreshTitle();
       pagesPanel.refreshTitle();
+      drawCoverPreview();
     });
     field.addEventListener("focus", () => {
       outline.markCurrent(null);
@@ -326,7 +395,10 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     title: title.value.trim(),
     titleReading: titleReading.trim(),
     tags,
-    synopsis: synopsis.trim(),
+    synopsis: synopsis
+      .replace(/\r\n?/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
     author: author.value.trim(),
     body: editor.getBody(),
     vertical,
@@ -384,7 +456,6 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
   /** 保存の小窓：タイトルの読み・タグ・表紙の画像を決めて保存する */
   const openSaveDialog = () => {
     if (!started) return; // ページができるまでは保存しない
-    let draftCover = cover;
     const tagsInput = h("input", {
       type: "text",
       value: tagsToText(tags),
@@ -395,12 +466,6 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     const drawTags = () => tagsPreview.replaceChildren(renderTagChips(parseTags(tagsInput.value), false) ?? "");
     tagsInput.addEventListener("input", drawTags);
     drawTags();
-    const synopsisInput = h("textarea", { class: "synopsis-input", maxlength: MAX_SYNOPSIS, rows: 4 });
-    synopsisInput.value = synopsis;
-    const synopsisCount = h("small", { class: "form-note" });
-    const drawSynopsisCount = () => (synopsisCount.textContent = `${synopsisInput.value.length} / ${MAX_SYNOPSIS}字`);
-    synopsisInput.addEventListener("input", drawSynopsisCount);
-    drawSynopsisCount();
     const readingInput = h("input", {
       type: "text",
       value: titleReading,
@@ -408,60 +473,22 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
       placeholder: "例：なつのおわりに",
       autocomplete: "off",
     });
-    const previewBox = h("div", { class: "save-cover" });
-    const removeBtn = h("button", { class: "btn btn-ghost", type: "button" }, "画像を外す");
-    const fileInput = h("input", { type: "file", accept: "image/*", hidden: true });
-    const error = h("p", { class: "form-error" });
-
-    const drawPreview = () => {
-      previewBox.replaceChildren(renderCover(currentMeta(draftCover)));
-      removeBtn.hidden = !draftCover;
-    };
-
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files?.[0];
-      fileInput.value = "";
-      if (!file) return;
-      error.textContent = "";
-      try {
-        draftCover = await compressCover(file);
-        drawPreview();
-      } catch (e) {
-        error.textContent = e instanceof Error ? e.message : "画像を読み込めませんでした。";
-      }
-    });
-    removeBtn.addEventListener("click", () => {
-      draftCover = null;
-      drawPreview();
-    });
-
     const saveBtn = h(
       "button",
       {
         class: "btn btn-primary",
         onclick: async () => {
-          const prevCover = cover;
           const prevReading = titleReading;
           const prevTags = tags;
-          const prevSynopsis = synopsis;
-          synopsis = synopsisInput.value
-            .replace(/\r\n?/g, "\n")
-            .replace(/\n{3,}/g, "\n\n")
-            .trim();
-          cover = draftCover;
           titleReading = readingInput.value;
           tags = parseTags(tagsInput.value);
           saveBtn.disabled = true;
           const ok = await save();
           saveBtn.disabled = false;
-          if (ok) {
-            close();
-            editor.refreshTitle(); // 表紙が変わったかもしれないので
-          } else {
-            cover = prevCover;
+          if (ok) close();
+          else {
             titleReading = prevReading;
             tags = prevTags;
-            synopsis = prevSynopsis;
           }
         },
       },
@@ -488,35 +515,10 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
           tagsPreview,
           h("small", { class: "form-note" }, "空白で区切って書きます。「探す」でタグから作品を見つけてもらえます。"),
         ),
-        h(
-          "label",
-          { class: "field save-reading" },
-          h("span", {}, "あらすじ"),
-          withScrollThumb(synopsisInput, "bio-input-wrap"),
-          synopsisCount,
-        ),
-        h(
-          "div",
-          { class: "save-body" },
-          previewBox,
-          h(
-            "div",
-            { class: "save-side" },
-            h(
-              "p",
-              { class: "form-note" },
-              "表紙にする画像を選べます。選ばなければ、タイトルと作者を書いた表紙になります。",
-            ),
-            h("button", { class: "btn", type: "button", onclick: () => fileInput.click() }, "画像を選ぶ"),
-            removeBtn,
-            fileInput,
-          ),
-        ),
-        error,
+        h("p", { class: "form-note" }, "表紙とあらすじは、左のパネルのいちばん上で変えられます。"),
         h("div", { class: "dialog-buttons" }, h("button", { class: "btn", onclick: () => close() }, "やめる"), saveBtn),
       ),
     );
-    drawPreview();
   };
 
   let closePreview: (() => void) | null = null;
@@ -609,6 +611,9 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
     cover = data.cover;
     vertical = data.vertical;
     dirBadge.textContent = vertical ? "縦書き" : "横書き";
+    synopsisInput.value = data.synopsis;
+    drawSynopsisCount();
+    drawCoverPreview();
     writer.hidden = false;
     // 左のメニューを隠して、書く道具・目次・ページのパネルを出す（スマホでは道具が上に出るので、ページの一番前に置く）
     document.body.prepend(panel);

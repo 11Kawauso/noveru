@@ -122,14 +122,87 @@ body.is-writing .side-rail {
   bottom: 0;
   left: var(--tools-w);
   z-index: 9;
+  width: var(--outline-w);
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+/* 中身はパネルの中でスクロールする（右端に細いつまみ） */
+.writer-outline-wrap {
+  height: 100%;
+}
+
+.writer-outline-wrap .scroll-thumb {
+  right: 3px;
+}
+
+.writer-outline-inner {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: var(--outline-w);
-  padding: 18px 16px;
-  background: var(--bg);
-  border-right: 1px solid var(--border);
+  height: 100%;
+  padding: 18px 16px 28px;
   overflow-y: auto;
+}
+
+/* 表紙：小さい表紙と、画像を選ぶ・外すボタン */
+.outline-cover {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.outline-cover-preview {
+  flex: 0 0 72px;
+}
+
+.outline-cover-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.outline-small-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.outline-small-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.outline-cover-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* あらすじ */
+.outline-synopsis {
+  width: 100%;
+  height: calc(1.6em * 6 + 20px);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.outline-count {
+  align-self: flex-end;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.outline-count.over {
+  color: var(--danger);
 }
 
 .outline-field {

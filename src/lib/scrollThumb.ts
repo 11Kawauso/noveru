@@ -23,7 +23,15 @@ export function withScrollThumb(el: HTMLElement, className = ""): HTMLElement {
 
   el.addEventListener("scroll", update, { passive: true });
   el.addEventListener("input", update);
-  new ResizeObserver(update).observe(el);
+  // 欄の大きさが変わったときと、中身（子どもの要素）の大きさや数が変わったときに測り直す
+  const sizes = new ResizeObserver(update);
+  sizes.observe(el);
+  const watchChildren = () => {
+    for (const child of el.children) sizes.observe(child);
+    update();
+  };
+  new MutationObserver(watchChildren).observe(el, { childList: true });
+  watchChildren();
 
   // つまみをドラッグしてスクロールする
   let drag: { id: number; y: number; scrollTop: number } | null = null;

@@ -1,8 +1,10 @@
-// 書く画面の左から2番目のパネル：タイトル・作者を書く欄と、目次（見出しの一覧）
+// 書く画面の左から2番目のパネル：表紙・あらすじ（top）、タイトル・作者を書く欄と、目次（見出しの一覧）
+//   中身が長いときはパネルの中でスクロールする（右端に細いつまみが出る）。
 //   行を見出しにするには、「＋見出し」「＋小見出し」（左の道具の「見出し」）を押すか、行の先頭に「#」「##」を書く。
 //   目次を押すと、その行へ飛ぶ。
 
 import { h, toast } from "./dom";
+import { withScrollThumb } from "./scrollThumb";
 import { PAGE_BREAK, parseHeading, tokenizeLine } from "./ruby";
 
 interface Heading {
@@ -58,6 +60,8 @@ export function createOutlinePanel(opts: {
   };
   /** 本文の pos 文字目へ飛ぶ */
   jump: (pos: number) => void;
+  /** タイトルの上に置くもの（表紙・あらすじ） */
+  top?: Node[];
 }): OutlinePanel {
   const { editor } = opts;
   let headings: Heading[] = [];
@@ -99,9 +103,10 @@ export function createOutlinePanel(opts: {
       `＋${label}`,
     );
 
-  const el = h(
-    "aside",
-    { class: "writer-outline", "aria-label": "タイトル・作者と目次" },
+  const inner = h(
+    "div",
+    { class: "writer-outline-inner" },
+    ...(opts.top ?? []),
     h("label", { class: "outline-field" }, h("span", {}, "タイトル"), opts.title),
     h("label", { class: "outline-field" }, h("span", {}, "作者"), opts.author),
     h(
@@ -113,6 +118,11 @@ export function createOutlinePanel(opts: {
     ),
     list,
     empty,
+  );
+  const el = h(
+    "aside",
+    { class: "writer-outline", "aria-label": "表紙・あらすじ・タイトル・作者と目次" },
+    withScrollThumb(inner, "writer-outline-wrap"),
   );
 
   const update = () => {
