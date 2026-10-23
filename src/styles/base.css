@@ -556,3 +556,14 @@ body.no-rail .side-rail {
 body.no-rail .page-area {
   margin-left: 0;
 }
+
+/* 書く画面・読む画面を開いているあいだは、ページ全体のピンチでの拡大を止める（紙だけを拡大縮小する。pageZoom.ts） */
+html.no-page-zoom,
+html.no-page-zoom body,
+html.no-page-zoom .writer-scroll,
+html.no-page-zoom .reader-scroll,
+html.no-page-zoom .page-thumbs-scroll,
+html.no-page-zoom .writer-outline,
+html.no-page-zoom .reader-side {
+  touch-action: pan-x pan-y;
+}

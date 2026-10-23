@@ -80,6 +80,10 @@ export function createZoomControl(): HTMLElement {
  * 紙が置いてある所（area：スクロールする入れ物）で、指のピンチと Ctrl ＋ ホイールで拡大縮小できるようにする。
  * content は大きさが変わる中身（並んだ紙）。指やマウスの下にあった所が、拡大縮小したあとも同じ場所に来るように
  * スクロールを合わせる。やめる関数を返す。
+ *
+ * スマホでは、これを使っている画面（書く画面・読む画面）を開いているあいだ、ブラウザのページ全体の拡大を止める
+ * （指の片方が紙の外に乗ったときなどに、紙ではなくページ全体が拡大されてしまわないように）。
+ * もしページ全体が拡大されてしまっていたら、ピンチはブラウザに任せて、元の大きさに戻せるようにする。
  */
 export function enableGestureZoom(area: HTMLElement, content: HTMLElement): () => void {
   /** (x, y) の所を動かさずに、倍率を zoom にする */
@@ -90,7 +94,11 @@ export function enableGestureZoom(area: HTMLElement, content: HTMLElement): () =
     const fy = (y - before.top) / before.height;
     setZoom(zoom); // ここで紙の大きさが変わる（倍率が変わったと聞いた画面が、すぐに大きさを変える）
     const after = content.getBoundingClientRect();
-    area.scrollBy({ left: after.left + fx * after.width - x, top: after.top + fy * after.height - y, behavior: "instant" });
+    area.scrollBy({
+      left: after.left + fx * after.width - x,
+      top: after.top + fy * after.height - y,
+      behavior: "instant",
+    });
   };
 
   // Ctrl ＋ マウスのホイール（タッチパッドのピンチも、ブラウザからはこれで届く）。ブラウザ全体の拡大はさせない
@@ -100,15 +108,22 @@ export function enableGestureZoom(area: HTMLElement, content: HTMLElement): () =
     zoomAt(getZoom() * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
   };
 
-  // 指2本のピンチ（1本のときは、ふつうにスクロールする）
+  /** ページ全体が拡大されているか（されていたら、ピンチはブラウザに任せて戻せるようにする） */
+  const pageZoomed = () => (window.visualViewport?.scale ?? 1) > 1.01;
+
+  // 指2本のピンチ（1本のときは、ふつうにスクロールする）。
+  // 指はページのどこに乗っても気づけるように、ページ全体で聞く。紙の所で始まったピンチだけ、紙を拡大縮小する
   let pinch: { dist: number; zoom: number } | null = null;
   const distance = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   const onTouchStart = (e: TouchEvent) => {
-    if (e.touches.length === 2) pinch = { dist: distance(e.touches), zoom: getZoom() };
+    if (e.touches.length !== 2) return;
+    const onPaper = [...e.touches].some((t) => t.target instanceof Node && area.contains(t.target));
+    pinch = onPaper && !pageZoomed() ? { dist: distance(e.touches), zoom: getZoom() } : null;
   };
   const onTouchMove = (e: TouchEvent) => {
-    if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault(); // ブラウザ全体の拡大はさせない
+    if (e.touches.length < 2 || pageZoomed()) return;
+    e.preventDefault(); // ブラウザのページ全体の拡大はさせない
+    if (!pinch) return;
     const x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     zoomAt((pinch.zoom * distance(e.touches)) / Math.max(1, pinch.dist), x, y);
@@ -117,32 +132,70 @@ export function enableGestureZoom(area: HTMLElement, content: HTMLElement): () =
     if (e.touches.length < 2) pinch = null;
   };
 
-  // Mac の Safari のタッチパッドのピンチ（Ctrl ＋ ホイールにならないので）
-  let gestureZoom = 1;
+  // Safari のピンチ（Mac のタッチパッドは Ctrl ＋ ホイールにならず、こちらで届く）。
+  // iPhone では指のピンチがタッチと両方で届くので、タッチで拡大縮小しているときは、こちらでは動かさない
+  let gesture: { zoom: number } | null = null;
   const onGestureStart = (e: Event) => {
+    if (pageZoomed()) return;
     e.preventDefault();
-    gestureZoom = getZoom();
+    const target = e.target;
+    gesture = !pinch && target instanceof Node && area.contains(target) ? { zoom: getZoom() } : null;
   };
   const onGestureChange = (e: Event) => {
+    if (pageZoomed()) return;
     e.preventDefault();
+    if (!gesture || pinch) return;
     const g = e as Event & { scale: number; clientX: number; clientY: number };
-    zoomAt(gestureZoom * g.scale, g.clientX, g.clientY);
+    zoomAt(gesture.zoom * g.scale, g.clientX, g.clientY);
   };
+  const onGestureEnd = () => (gesture = null);
 
   area.addEventListener("wheel", onWheel, { passive: false });
-  area.addEventListener("touchstart", onTouchStart, { passive: true });
-  area.addEventListener("touchmove", onTouchMove, { passive: false });
-  area.addEventListener("touchend", onTouchEnd);
-  area.addEventListener("touchcancel", onTouchEnd);
-  area.addEventListener("gesturestart", onGestureStart);
-  area.addEventListener("gesturechange", onGestureChange);
+  document.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+  document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+  document.addEventListener("touchend", onTouchEnd, { capture: true });
+  document.addEventListener("touchcancel", onTouchEnd, { capture: true });
+  document.addEventListener("gesturestart", onGestureStart, { capture: true });
+  document.addEventListener("gesturechange", onGestureChange, { capture: true });
+  document.addEventListener("gestureend", onGestureEnd, { capture: true });
+  const releasePageZoom = holdPageZoom();
   return () => {
     area.removeEventListener("wheel", onWheel);
-    area.removeEventListener("touchstart", onTouchStart);
-    area.removeEventListener("touchmove", onTouchMove);
-    area.removeEventListener("touchend", onTouchEnd);
-    area.removeEventListener("touchcancel", onTouchEnd);
-    area.removeEventListener("gesturestart", onGestureStart);
-    area.removeEventListener("gesturechange", onGestureChange);
+    document.removeEventListener("touchstart", onTouchStart, { capture: true });
+    document.removeEventListener("touchmove", onTouchMove, { capture: true });
+    document.removeEventListener("touchend", onTouchEnd, { capture: true });
+    document.removeEventListener("touchcancel", onTouchEnd, { capture: true });
+    document.removeEventListener("gesturestart", onGestureStart, { capture: true });
+    document.removeEventListener("gesturechange", onGestureChange, { capture: true });
+    document.removeEventListener("gestureend", onGestureEnd, { capture: true });
+    releasePageZoom();
+  };
+}
+
+/**
+ * ページ全体の拡大を止める（書く画面・読む画面を開いているあいだ）。
+ *   ・touch-action でピンチを止める（Android の Chrome など）
+ *   ・viewport を maximum-scale=1 にする（すでに拡大されていたら、元の大きさに戻る）
+ * 書く画面の上にプレビューを重ねたときのように、2つ同時に使っても、両方やめたときに元に戻す。
+ */
+let pageZoomHolds = 0;
+let savedViewport: string | null = null;
+function holdPageZoom(): () => void {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  if (pageZoomHolds++ === 0) {
+    document.documentElement.classList.add("no-page-zoom");
+    if (meta) {
+      savedViewport = meta.content;
+      meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0";
+    }
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--pageZoomHolds === 0) {
+      document.documentElement.classList.remove("no-page-zoom");
+      if (meta && savedViewport !== null) meta.content = savedViewport;
+    }
   };
 }
