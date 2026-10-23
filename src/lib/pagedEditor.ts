@@ -11,7 +11,7 @@ import type { BookMeta } from "../store";
 import { caretRect } from "./caret";
 import { renderCover } from "./cover";
 import { h } from "./dom";
-import { createPaginator, loadFonts, titlePageHtml } from "./reader";
+import { createPaginator, loadFonts } from "./reader";
 import { PAGE_BREAK } from "./ruby";
 
 /** 本文の1ページ分の書く欄 */
@@ -69,8 +69,8 @@ export function createPagedEditor(opts: {
   onChange: (page: number | null) => void;
   /** いま見ている（書いている）ページが変わったとき。caret は本文の欄にいないとき null */
   onCurrent: (index: number, caret: number | null) => void;
-  /** タイトルのページを押したとき */
-  onTitleClick: () => void;
+  /** タイトルのページで、タイトルか作者を書き換えたとき */
+  onTitleInput: (value: { title: string; author: string }) => void;
 }): PagedEditor {
   const { scroller } = opts;
   let vertical = false;
@@ -79,11 +79,68 @@ export function createPagedEditor(opts: {
   let current = -1;
 
   const coverWrap = h("div", { class: "wsheet-wrap", "data-index": 0 });
-  const titleContent = h("div", { class: "page-content is-title" });
+
+  // タイトルのページ：読む画面と同じ見た目のまま、タイトルと作者をここでも書ける（左のパネルの欄と同じ中身）
+  const titleInput = h("textarea", {
+    class: "title-edit title-page-title",
+    rows: 1,
+    maxlength: 100,
+    placeholder: "タイトル",
+    spellcheck: false,
+    "aria-label": "タイトル",
+  });
+  const authorInput = h("textarea", {
+    class: "title-edit title-page-author",
+    rows: 1,
+    maxlength: 60,
+    placeholder: "作者",
+    spellcheck: false,
+    "aria-label": "作者",
+  });
+  /** 書いた分だけ欄を伸ばす（横書きは下へ、縦書きは左へ） */
+  const growTitle = () => {
+    for (const ta of [titleInput, authorInput]) {
+      if (vertical) {
+        ta.style.height = "";
+        ta.style.width = "0px";
+        ta.style.width = `${ta.scrollWidth}px`;
+      } else {
+        ta.style.width = "";
+        ta.style.height = "0px";
+        ta.style.height = `${ta.scrollHeight}px`;
+      }
+    }
+  };
+  for (const ta of [titleInput, authorInput]) {
+    ta.addEventListener("input", () => {
+      // 1行の欄なので、改行は入れない（貼り付けたときなど）
+      if (/[\r\n]/.test(ta.value)) ta.value = ta.value.replace(/[\r\n]+/g, " ");
+      growTitle();
+      opts.onTitleInput({ title: titleInput.value, author: authorInput.value });
+    });
+    ta.addEventListener("focus", () => setCurrent(1));
+  }
+  // タイトルで Enter を押したら作者へ、作者で Enter を押したら本文の最初へ
+  titleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) {
+      e.preventDefault();
+      authorInput.focus();
+    }
+  });
+  authorInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) {
+      e.preventDefault();
+      if (pages[0]) placeCaret(0, 0, "ifNeeded");
+    }
+  });
   const titleWrap = h(
     "div",
     { class: "wsheet-wrap", "data-index": 1 },
-    h("div", { class: "wsheet wsheet-title", onclick: () => opts.onTitleClick() }, titleContent),
+    h(
+      "div",
+      { class: "wsheet wsheet-title" },
+      h("div", { class: "page-content is-title" }, h("div", { class: "title-page" }, titleInput, authorInput)),
+    ),
     h("span", { class: "wsheet-num" }, "1"),
   );
   const el = h("div", { class: "page-stack" }, coverWrap, titleWrap);
@@ -297,8 +354,12 @@ export function createPagedEditor(opts: {
   };
   document.addEventListener("selectionchange", onSelection);
 
+  /** タイトルのページと表紙を、いまのタイトル・作者・表紙に合わせる（書いている途中の欄はそのまま） */
   const drawTitle = () => {
-    titleContent.innerHTML = titlePageHtml({ ...opts.title(), body: "", vertical });
+    const { title, author } = opts.title();
+    if (document.activeElement !== titleInput && titleInput.value !== title) titleInput.value = title;
+    if (document.activeElement !== authorInput && authorInput.value !== author) authorInput.value = author;
+    growTitle();
     coverWrap.replaceChildren(h("div", { class: "wsheet wsheet-cover" }, renderCover(opts.meta())));
   };
 

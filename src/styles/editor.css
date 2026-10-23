@@ -1036,3 +1036,41 @@ body.is-writing .demo-banner {
 .dir-sample.is-horizontal {
   background-image: repeating-linear-gradient(to bottom, var(--muted) 0 2px, transparent 2px 9px);
 }
+
+/* ---- 真ん中のタイトルのページ：読む画面と同じ見た目のまま、タイトルと作者を書ける ---- */
+
+.title-edit {
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  margin-inline: -4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.15s;
+}
+
+/* 書けることが分かるように、マウスを合わせたり書いているときは点線で囲む */
+.title-edit:hover,
+.title-edit:focus {
+  outline-color: var(--border);
+}
+
+.title-edit::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.page-stack.is-vertical .title-edit {
+  width: auto;
+  height: 100%;
+  padding: 4px 2px;
+  margin-inline: 0;
+  margin-block: -4px;
+}

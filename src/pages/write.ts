@@ -128,10 +128,13 @@ export function writePage(app: HTMLElement, params: Record<string, string>) {
       pagesPanel.markCurrent(index);
       outline.markCurrent(caret);
     },
-    onTitleClick: () => {
-      // 目次のパネルをしまっているときは出してから
-      if (getComputedStyle(outline.el).visibility === "hidden") toggleDrawer(outline.el);
-      title.focus();
+    // 真ん中のタイトルのページで書いたら、左のパネルの欄・右のページの一覧・表紙にも入れる
+    onTitleInput: (value) => {
+      title.value = value.title;
+      author.value = value.author;
+      pagesPanel.refreshTitle();
+      drawCoverPreview();
+      editor.refreshTitle();
     },
   });
   scroller.append(editor.el);
